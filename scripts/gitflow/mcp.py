@@ -82,7 +82,11 @@ def serve():
             elif method=='tools/call':
                 if 'id' not in msg:continue
                 try:
-                    if set(params)-{'name','arguments'}:raise FlowError('mcp_arguments_invalid','工具调用含未知字段。')
+                    if set(params)-{'name','arguments','_meta'}:raise FlowError('mcp_arguments_invalid','工具调用含未知字段。')
+                    if '_meta' in params and not isinstance(params['_meta'],dict):
+                        raise FlowError('mcp_arguments_invalid','MCP 元数据必须为对象。')
+                    # Standard transport metadata is not forwarded as tool arguments
+                    # and cannot grant apply or change the requested operation.
                     r=call(params.get('name'),params.get('arguments',{}))
                 except FlowError as exc:r=report('mcp.call',exc.decision,[reason(exc.code,exc.message)])
                 except (OSError,ValueError,KeyError,TypeError,AttributeError):r=report('mcp.call','error',[reason('internal_error','工具未完成，不采用部分结果。')])
