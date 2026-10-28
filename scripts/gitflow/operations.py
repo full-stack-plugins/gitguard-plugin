@@ -107,7 +107,7 @@ def execute(facts, action, commands, apply=False, update=None):
         except (FlowError, OSError) as exc:
             if not isinstance(exc, FlowError):
                 exc = FlowError('journal_io_error', '操作或记录写入中断，必须复核当前状态。')
-            entry['status']='unknown' if exc.code in ('git_timeout','journal_io_error','git_output_limit') else 'incomplete'
+            entry['status']='unknown' if exc.code in ('git_timeout','git_cancelled','git_cleanup_failed','journal_io_error','git_output_limit') else 'incomplete'
             entry['error']=reason(exc.code,exc.message)
             result['decision']='unverified';result['reasons']=[entry['error']]
             result['next_actions']=[{'action':'recovery.diagnose','operation_id':entry['id']}]

@@ -56,6 +56,8 @@ def run(path, *args, check=True, timeout=20):
                             raise FlowError('git_output_limit', 'Git 输出超过预算，不采用截断结果。')
         code = proc.wait(timeout=max(0.01, deadline-time.monotonic()))
         p = subprocess.CompletedProcess(proc.args, code, bytes(buffers[0]), bytes(buffers[1]))
+    except KeyboardInterrupt as exc:
+        raise FlowError('git_cancelled', 'Git 操作已取消；实际写入结果未知，必须复核状态。') from exc
     except FileNotFoundError as exc:
         raise FlowError('git_unavailable', 'Git 命令不可用，请先恢复已有工具。') from exc
     except subprocess.TimeoutExpired as exc:
@@ -64,14 +66,31 @@ def run(path, *args, check=True, timeout=20):
         raise FlowError('git_io_error', 'Git 进程无法启动或读取。') from exc
     finally:
         if proc is not None:
-            if proc.poll() is None:
+            # A completed Git leader can leave descendants holding the pipes.
+            # Always retire the session we created, including on cancellation.
+            cleanup_failed = False
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            except OSError:
+                cleanup_failed = True
+                # Best effort only: killing the leader cannot prove tree cleanup.
                 try:
-                    os.killpg(proc.pid, signal.SIGKILL)
-                except ProcessLookupError:
+                    proc.kill()
+                except OSError:
                     pass
-                proc.wait()
-            proc.stdout.close()
-            proc.stderr.close()
+            try:
+                proc.wait(timeout=1)
+            except (OSError, subprocess.TimeoutExpired):
+                cleanup_failed = True
+            for stream in (proc.stdout, proc.stderr):
+                try:
+                    stream.close()
+                except OSError:
+                    cleanup_failed = True
+            if cleanup_failed:
+                raise FlowError('git_cleanup_failed', 'Git 进程树清理未确认；结果未知，必须复核进程与仓库状态。')
     if check and p.returncode:
         raise FlowError('git_command_failed', 'Git 操作未完成，请检查仓库、身份、冲突或远端权限。')
     return p
