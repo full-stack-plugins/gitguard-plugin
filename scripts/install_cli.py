@@ -75,6 +75,8 @@ def windows_action(command, path, argv):
 
 
 def main(argv):
+    from gitflow.stdio import configure_stdio
+    configure_stdio()
     command = argv[0] if argv else "install"
     if command == "completion":
         shell = argv[1] if len(argv) > 1 else "bash"

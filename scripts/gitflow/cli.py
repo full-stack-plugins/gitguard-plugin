@@ -105,6 +105,8 @@ def dispatch(a):
 
 
 def main(argv=None):
+    from .stdio import configure_stdio
+    configure_stdio()
     import sys
     argv = sys.argv[1:] if argv is None else argv
     if argv and argv[0] == 'mcp':

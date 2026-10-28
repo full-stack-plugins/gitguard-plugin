@@ -90,7 +90,7 @@ class PythonLauncherTests(unittest.TestCase):
     def test_python_entry_preserves_version_and_unknown_command_exit(self):
         for args, expected in [(["version", "--json"], 0), (["unknown-command"], 2)]:
             result = subprocess.run([sys.executable, str(PLUGIN / "scripts/cli_entry.py"), *args],
-                                    capture_output=True, text=True, timeout=15, check=False)
+                                    capture_output=True, text=True, encoding='utf-8', timeout=15, check=False)
             self.assertEqual(expected, result.returncode, result.stderr)
             if expected == 0:
                 self.assertEqual("version", json.loads(result.stdout)["action"])
@@ -102,7 +102,7 @@ class PythonLauncherTests(unittest.TestCase):
         for command in commands:
             with self.subTest(command=command):
                 results = [subprocess.run([sys.executable, str(PLUGIN / 'scripts' / script),
-                                           command, '--help'], capture_output=True, text=True,
+                                           command, '--help'], capture_output=True, text=True, encoding='utf-8',
                                           timeout=15) for script in ['gitflow.py', 'cli_entry.py']]
                 self.assertEqual(results[0].returncode, results[1].returncode)
                 self.assertEqual(results[0].stdout, results[1].stdout)
@@ -114,15 +114,15 @@ class WindowsCommandExecutionTests(unittest.TestCase):
     def test_installed_cmd_executes_without_bash(self):
         with tempfile.TemporaryDirectory(prefix="gg cmd actual ") as temporary:
             args = [sys.executable, str(PLUGIN / "scripts/cli_entry.py"), "install", "--bin-dir", temporary]
-            installed = subprocess.run(args, text=True, capture_output=True, timeout=15, check=False)
+            installed = subprocess.run(args, text=True, encoding='utf-8', capture_output=True, timeout=15, check=False)
             self.assertEqual(0, installed.returncode, installed.stderr)
             command = str(Path(temporary) / "gitguard.cmd")
             for suffix, expected in [(["version", "--json"], 0), (["unknown-command"], 2)]:
-                result = subprocess.run([command, *suffix], text=True, capture_output=True,
+                result = subprocess.run([command, *suffix], text=True, encoding='utf-8', capture_output=True,
                                         timeout=15, check=False)
                 self.assertEqual(expected, result.returncode, result.stderr)
                 if expected == 0:
                     self.assertEqual("version", json.loads(result.stdout)["action"])
-            result = subprocess.run([command, "--help"], text=True, capture_output=True,
+            result = subprocess.run([command, "--help"], text=True, encoding='utf-8', capture_output=True,
                                     timeout=15, check=False)
             self.assertEqual(0, result.returncode, result.stderr)
