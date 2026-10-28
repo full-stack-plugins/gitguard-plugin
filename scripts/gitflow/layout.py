@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shlex
 import shutil
+import sys
 
 from .git import FlowError, run, text
 from .storage import atomic_json, read_json, safe_dir, _redirected
@@ -139,4 +140,42 @@ def prepare(facts, directory, plan):
             hook.write_text(wrapper(runtime, kind))
     for old, backup in moves:
         backup.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(old), str(backup))
+        _move_legacy_directory(old, backup)
+
+
+def _move_legacy_directory(old, backup):
+    """Preserve the held lock object; never unlock to make a directory move pass."""
+    try:
+        if sys.platform == 'win32':
+            _move_legacy_contents(old, backup)
+        else:
+            shutil.move(str(old), str(backup))
+    except OSError as exc:
+        # Partial migration is intentionally not auto-resumed: migration_plan
+        # rejects an existing backup while old state remains. Preserve both.
+        raise FlowError('state_migration_incomplete',
+                        '状态迁移未完成；保留旧目录与备份，复核双方内容后再继续，不能自动覆盖重试。') from exc
+
+
+def _move_legacy_contents(old, backup):
+    """Windows cannot move a directory containing the open locked file.
+
+    Move children individually, with state.lock last. Its handle and byte lock
+    remain alive throughout; the primary new-layout lock is also still held.
+    """
+    old, backup = Path(old), Path(backup)
+    if _redirected(old) or _redirected(backup):
+        raise FlowError('state_symlink', '迁移目录不能通过重解析点访问。')
+    if old.stat().st_dev != backup.parent.stat().st_dev:
+        # Copy/delete would create a different lock object, breaking exclusion.
+        raise OSError('cross-volume migration cannot preserve the locked file identity')
+    entries = sorted(old.iterdir(), key=lambda path: (path.name == 'state.lock', path.name))
+    backup.mkdir()  # Existing/partial backups are never merged or overwritten.
+    for entry in entries:
+        if _redirected(entry):
+            raise FlowError('state_symlink', '迁移发现重解析点，保留双方数据。')
+        destination = backup / entry.name
+        if destination.exists() or _redirected(destination):
+            raise FileExistsError('migration destination already exists')
+        entry.rename(destination)
+    old.rmdir()

@@ -73,13 +73,53 @@ class NativeLockTests(unittest.TestCase):
         old.mkdir()
         target = self.path.parent / 'backup'
         with storage._lock_file(old / 'state.lock', movable=True):
-            old.rename(target)
+            from gitflow.layout import _move_legacy_directory
+            (old / 'user-note').write_bytes(b'preserve')
+            original = (old / 'state.lock').stat()
+            _move_legacy_directory(old, target)
+            self.assertFalse(old.exists())
+            self.assertEqual((target / 'user-note').read_bytes(), b'preserve')
+            moved = (target / 'state.lock').stat()
+            self.assertEqual((original.st_dev, original.st_ino), (moved.st_dev, moved.st_ino))
             with self.assertRaises(FlowError) as caught:
                 with storage._lock_file(target / 'state.lock'):
                     self.fail('migration released original lock')
             self.assertEqual(caught.exception.code, 'operation_busy')
         with storage._lock_file(target / 'state.lock'):
             pass
+
+    def test_content_move_failure_preserves_both_sides_and_original_lock(self):
+        """Fault injection tests the Windows algorithm; not native OS evidence."""
+        from unittest.mock import patch
+        from gitflow.layout import _move_legacy_contents
+        old = self.path.parent / 'legacy'
+        old.mkdir()
+        target = self.path.parent / 'backup'
+        (old / 'a').write_bytes(b'first')
+        (old / 'b').write_bytes(b'second')
+        original_rename = Path.rename
+
+        def fail_second(path, destination):
+            if path == old / 'b':
+                raise PermissionError('injected second move failure')
+            return original_rename(path, destination)
+
+        with storage._lock_file(old / 'state.lock', movable=True):
+            identity = (old / 'state.lock').stat()
+            with patch.object(Path, 'rename', fail_second):
+                with self.assertRaises(PermissionError):
+                    _move_legacy_contents(old, target)
+            self.assertEqual((target / 'a').read_bytes(), b'first')
+            self.assertEqual((old / 'b').read_bytes(), b'second')
+            self.assertEqual((old / 'state.lock').stat().st_ino, identity.st_ino)
+            with self.assertRaises(FlowError) as caught:
+                with storage._lock_file(old / 'state.lock'):
+                    self.fail('partial migration released original lock')
+            self.assertEqual(caught.exception.code, 'operation_busy')
+            with self.assertRaises(FileExistsError):
+                _move_legacy_contents(old, target)
+            self.assertEqual((target / 'a').read_bytes(), b'first')
+            self.assertEqual((old / 'b').read_bytes(), b'second')
 
     @unittest.skipUnless(sys.platform == 'win32', 'actual Windows junction required')
     def test_windows_junction_lock_parent_is_rejected_without_creating_file(self):
