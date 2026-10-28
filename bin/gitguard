@@ -1,5 +1,6 @@
 #!/bin/sh
-ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+# Resolve installed symlinks (including relative chains) before locating the package.
+ROOT=$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve(strict=True).parent.parent)' "$0") || exit 2
 cmd=$1
 case "$cmd" in
   install|uninstall|upgrade|completion) exec python3 "$ROOT/scripts/install_cli.py" "$@" ;;
