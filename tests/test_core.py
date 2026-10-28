@@ -36,7 +36,7 @@ class GitTestCase(unittest.TestCase):
 
     def cli(self, *args, code=0, cwd=None):
         p = subprocess.run([sys.executable, str(CLI), *map(str, args), '--json'],
-                           env=self.env, cwd=cwd, capture_output=True, text=True, timeout=20)
+                           env=self.env, cwd=cwd, capture_output=True, text=True, encoding='utf-8', timeout=20)
         self.assertEqual(p.returncode, code, p.stderr or p.stdout)
         try:
             return json.loads(p.stdout)

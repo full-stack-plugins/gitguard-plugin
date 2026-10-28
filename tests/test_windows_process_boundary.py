@@ -1,4 +1,4 @@
-"""The unverified Windows process-tree backend must not run a Git operation."""
+"""Unavailable native process control must fail closed before Git starts."""
 import sys
 from pathlib import Path
 import unittest
@@ -10,7 +10,7 @@ from gitflow import git
 
 class WindowsProcessBoundaryTests(unittest.TestCase):
     def test_unverified_windows_backend_stops_before_starting_git(self):
-        with patch.object(sys, 'platform', 'win32'), patch.object(
+        with patch.object(sys, 'platform', 'win32'), patch('gitflow.windows_process._Api', side_effect=OSError('native API unavailable')), patch.object(
                 git.subprocess, 'Popen', side_effect=AssertionError('Git must not start')):
             with self.assertRaises(git.FlowError) as caught:
                 git.run('.', 'status')

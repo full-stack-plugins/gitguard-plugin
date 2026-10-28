@@ -19,9 +19,6 @@ class FlowError(Exception):
 
 def run(path, *args, check=True, timeout=20):
     """在目标目录执行 Git，返回完整进程结果；失败不暴露远端凭据。"""
-    if sys.platform == 'win32':
-        raise FlowError('windows_process_control_unverified',
-                        'Windows Git 进程树监管尚未验证；未启动 Git，不授权操作。')
     env = dict(os.environ)
     for key in ('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR'):
         env.pop(key, None)
@@ -36,6 +33,12 @@ def run(path, *args, check=True, timeout=20):
             if key.startswith(('GIT_CONFIG_KEY_', 'GIT_CONFIG_VALUE_')):
                 env.pop(key)
     env['LC_ALL'] = 'C'
+    if sys.platform == 'win32':
+        from .windows_process import run_windows
+        p = run_windows(['git', '-C', str(path), *args], env, timeout)
+        if check and p.returncode:
+            raise FlowError('git_command_failed', 'Git 操作未完成，请检查仓库、身份、冲突或远端权限。')
+        return p
     proc = None
     try:
         proc = subprocess.Popen(['git', '-C', str(path), *args], env=env,

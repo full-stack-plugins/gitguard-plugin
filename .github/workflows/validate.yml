@@ -30,9 +30,9 @@ jobs:
       - run: python3 scripts/validate_package.py
       - run: python3 scripts/vendor_skills.py --check
       - run: python3 -m unittest discover -s tests -p 'test_*.py'
-  windows-launcher-candidate:
-    name: Windows x64 launcher only (Git execution unverified)
-    runs-on: windows-latest
+  windows-native-candidate:
+    name: Windows x64 native Git safety candidate
+    runs-on: windows-2022
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -41,8 +41,28 @@ jobs:
           python-version: '3.11'
           architecture: x64
       - name: Verify actual Windows x64 runtime
-        run: python -c "import platform; assert platform.system() == 'Windows'; assert platform.machine().lower() in ('amd64', 'x86_64')"
+        run: python -c "import platform,sys,subprocess; print(platform.platform(), platform.machine(), sys.version); assert platform.system() == 'Windows'; assert platform.machine().lower() in ('amd64', 'x86_64'); subprocess.run(['git','--version'],check=True)"
       - name: Exercise managed cmd and existing Python command dispatch
         run: python -B -m unittest discover -s tests -p test_windows_cli_install.py
-      - name: Verify unsupported Git execution fails closed
-        run: python -B -m unittest discover -s tests -p test_windows_process_boundary.py
+      - name: Native Windows process tree contracts
+        if: ${{ !cancelled() }}
+        run: python scripts/candidate_test.py windows-process python -B -m unittest discover -s tests -p test_windows_runner_safety.py
+      - name: Native cross-process state locks
+        if: ${{ !cancelled() }}
+        run: python scripts/candidate_test.py windows-locks python -B -m unittest discover -s tests -p test_native_storage_lock.py
+      - name: Real temporary Git operations and local bare remote
+        if: ${{ !cancelled() }}
+        run: python scripts/candidate_test.py windows-operations python -B -m unittest discover -s tests -p test_operations.py
+      - name: Candidate binding, conflict recovery, unknown results and dirty worktrees
+        if: ${{ !cancelled() }}
+        run: python scripts/candidate_test.py windows-safety python -B -m unittest discover -s tests -p test_native_git_safety.py
+      - name: Native storage migration contracts
+        if: ${{ !cancelled() }}
+        run: python scripts/candidate_test.py windows-storage python -B -m unittest discover -s tests -p test_storage_layout.py
+      - name: Retain candidate evidence without publishing
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: gitguard-windows-native-${{ github.sha }}
+          path: candidate-evidence/*.log
+          if-no-files-found: warn

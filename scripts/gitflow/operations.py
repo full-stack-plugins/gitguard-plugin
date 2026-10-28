@@ -1,6 +1,7 @@
 """显式变更、逐步日志与可恢复的 Git 操作。"""
 import re
 import uuid
+from pathlib import Path
 from .git import FlowError, discover, oid, reason, report, require_repo, run, text, valid_branch
 from .policy import load, role_for
 from .service import gate
@@ -30,7 +31,7 @@ def available(path, name, root):
     for line in text(path, 'worktree', 'list', '--porcelain').splitlines():
         if line.startswith('worktree '):
             worktree = line[9:]
-        elif line == 'branch refs/heads/' + name and worktree != root:
+        elif line == 'branch refs/heads/' + name and (worktree is None or Path(worktree).resolve() != Path(root).resolve()):
             raise FlowError('branch_worktree_occupied', '此分支已在另一工作树检出。')
 
 
