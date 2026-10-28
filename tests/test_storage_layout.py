@@ -90,9 +90,11 @@ class StorageLayoutTests(GitTestCase):
         hook.write_text('#!/bin/sh\nexec python3 ' + shlex.quote(str(runtime / 'scripts/gitflow.py')) + ' native --kind commit-msg -- "$@"\n')
         hook.chmod(0o755)
         self.cli('init', self.path, '--mode', 'local', '--apply')
-        self.assertIn('/.gitflow/state/native-runtime/', hook.read_text())
+        expected_script = self.path / '.gitflow/state/native-runtime/scripts/gitflow.py'
+        self.assertEqual(hook.read_text(), '#!/bin/sh\nexec python3 ' +
+                         shlex.quote(str(expected_script)) + ' native --kind commit-msg -- "$@"\n')
         import subprocess
-        result = subprocess.run(['git', '-C', str(self.path), 'commit', '--allow-empty', '-m', 'fix: blocked'], env=self.env, capture_output=True, text=True)
+        result = subprocess.run(['git', '-C', str(self.path), 'commit', '--allow-empty', '-m', 'fix: blocked'], env=self.env, capture_output=True, text=True, encoding='utf-8')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('当前角色禁止直接提交', result.stdout + result.stderr)
 
