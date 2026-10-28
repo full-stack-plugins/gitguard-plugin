@@ -12,9 +12,23 @@ DEFAULT_BIN = Path.home() / ".local" / "bin"
 
 
 def target(argv):
-    if "--bin-dir" in argv:
-        return Path(argv[argv.index("--bin-dir") + 1]).expanduser().resolve() / "gitguard"
-    return DEFAULT_BIN / "gitguard"
+    directory = None
+    index = 1
+    while index < len(argv):
+        option = argv[index]
+        if option in ("--dry-run", "--json"):
+            index += 1
+            continue
+        if option != "--bin-dir":
+            raise ValueError("unknown option: " + option)
+        if directory is not None:
+            raise ValueError("--bin-dir may only be provided once")
+        index += 1
+        if index >= len(argv) or not argv[index] or argv[index].startswith("-"):
+            raise ValueError("--bin-dir requires a directory path")
+        directory = argv[index]
+        index += 1
+    return (Path(directory).expanduser().resolve() if directory is not None else DEFAULT_BIN) / "gitguard"
 
 
 def payload(command, decision, **extra):
@@ -25,7 +39,6 @@ def payload(command, decision, **extra):
 
 def main(argv):
     command = argv[0] if argv else "install"
-    path = target(argv)
     if command == "completion":
         shell = argv[1] if len(argv) > 1 else "bash"
         commands = "version discover init audit gate policy branch sync release recovery context hooks organization doctor check status report"
@@ -39,6 +52,11 @@ def main(argv):
         return 0
     if command not in ("install", "uninstall", "upgrade"):
         print("usage: gitguard install|uninstall|upgrade [--bin-dir DIR] [--dry-run]", file=sys.stderr)
+        return 2
+    try:
+        path = target(argv)
+    except ValueError as exc:
+        print(json.dumps(payload(command, "error", error="invalid_arguments", message=str(exc)), ensure_ascii=False))
         return 2
     if command == "uninstall":
         if not path.is_symlink() or path.resolve() != SOURCE.resolve():

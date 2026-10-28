@@ -88,3 +88,37 @@ class InstallTests(unittest.TestCase):
     def test_missing_uninstall_is_denied(self):
         self.lifecycle('uninstall', code=1)
         self.assertFalse(self.bin.exists())
+
+    def test_bin_dir_requires_a_path_without_side_effects(self):
+        for command in ('install', 'upgrade', 'uninstall'):
+            for trailing in ((), ('--dry-run',), ('--json',), ('',)):
+                with self.subTest(command=command, trailing=trailing):
+                    before = sorted(str(p.relative_to(self.root)) for p in self.root.rglob('*'))
+                    result = subprocess.run(['sh', str(ROOT / 'bin/gitguard'), command,
+                                             '--bin-dir', *trailing], cwd=self.root,
+                                            capture_output=True, text=True, timeout=15)
+                    self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                    self.assertNotIn('Traceback', result.stderr)
+                    response = json.loads(result.stdout)
+                    self.assertEqual(response['decision'], 'error')
+                    self.assertEqual(response['exitCode'], 2)
+                    self.assertEqual(response['command'], 'gitguard.' + command)
+                    self.assertEqual(sorted(str(p.relative_to(self.root)) for p in self.root.rglob('*')), before)
+
+    def test_malformed_trailing_options_do_not_remove_managed_entry(self):
+        self.lifecycle('install')
+        for command in ('install', 'upgrade', 'uninstall'):
+            for extra in (('--bin-dir',), ('--bin-dir', '--dry-run'), ('--unknown',)):
+                with self.subTest(command=command, extra=extra):
+                    result = subprocess.run(['sh', str(ROOT / 'bin/gitguard'), command,
+                                             '--bin-dir', str(self.bin), *extra], cwd=self.root,
+                                            capture_output=True, text=True, timeout=15)
+                    self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                    self.assertNotIn('Traceback', result.stderr)
+                    self.assertEqual(json.loads(result.stdout)['decision'], 'error')
+                    self.assertTrue(self.entry.is_symlink())
+
+    def test_json_and_dry_run_flags_remain_supported(self):
+        response = self.lifecycle('install', '--json', '--dry-run')
+        self.assertTrue(response['dryRun'])
+        self.assertFalse(self.bin.exists())
