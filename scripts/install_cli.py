@@ -28,13 +28,50 @@ def target(argv):
             raise ValueError("--bin-dir requires a directory path")
         directory = argv[index]
         index += 1
-    return (Path(directory).expanduser().resolve() if directory is not None else DEFAULT_BIN) / "gitguard"
+    return (Path(directory).expanduser().resolve() if directory is not None else DEFAULT_BIN) / ("gitguard.cmd" if sys.platform == "win32" else "gitguard")
 
 
 def payload(command, decision, **extra):
     code = {"allow": 0, "deny": 1, "error": 2, "unverified": 3}.get(decision, 4)
     return {"schemaVersion": "partme.guard/v1", "tool": "gitguard", "command": "gitguard." + command,
             "decision": decision, "exitCode": code, "findings": [], "evidence": {}, **extra}
+
+
+def windows_launcher(path):
+    entry = ROOT / "scripts" / "cli_entry.py"
+    # Avoid cmd expansion/quoting ambiguity instead of trying to escape arbitrary
+    # batch metacharacters. Ordinary paths containing spaces remain supported.
+    for value in (str(path), sys.executable, str(entry)):
+        if not value.isascii():
+            raise ValueError("Windows batch launcher paths must be ASCII until codepage support is verified")
+        if not value or any(character in value for character in '%!&^\r\n"<>|()'):
+            raise ValueError("Windows launcher paths must not contain batch metacharacters")
+    return ("@echo off\r\nsetlocal DisableDelayedExpansion\r\n"
+            f'"{sys.executable}" "{entry}" %*\r\nexit /b %errorlevel%\r\n').encode()
+
+
+def windows_action(command, path, argv):
+    content = windows_launcher(path)
+    exists = path.exists() or path.is_symlink()
+    managed = (exists and not path.is_symlink() and path.is_file()
+               and path.stat().st_size == len(content) and path.read_bytes() == content)
+    if (command == "uninstall" and not managed) or (exists and not managed):
+        print(json.dumps(payload(command, "deny", error="not_managed", path=str(path)), ensure_ascii=False))
+        return 1
+    if "--dry-run" in argv:
+        print(json.dumps(payload(command, "allow", dryRun=True, path=str(path)), ensure_ascii=False))
+        return 0
+    if command == "uninstall":
+        path.unlink()
+        result = payload(command, "allow", removed=str(path))
+    else:
+        if not managed:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("xb") as output:
+                output.write(content)
+        result = payload(command, "allow", installed=True, target=str(path))
+    print(json.dumps(result, ensure_ascii=False))
+    return 0
 
 
 def main(argv):
@@ -55,8 +92,13 @@ def main(argv):
         return 2
     try:
         path = target(argv)
+        if sys.platform == "win32":
+            return windows_action(command, path, argv)
     except ValueError as exc:
         print(json.dumps(payload(command, "error", error="invalid_arguments", message=str(exc)), ensure_ascii=False))
+        return 2
+    except OSError as exc:
+        print(json.dumps(payload(command, "error", error="installation_io_error", message=str(exc)), ensure_ascii=False))
         return 2
     if command == "uninstall":
         if not path.is_symlink() or path.resolve() != SOURCE.resolve():

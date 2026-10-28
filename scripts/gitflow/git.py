@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import selectors
 import signal
+import sys
 import time
 
 VERSION = '0.4.0'
@@ -18,6 +19,9 @@ class FlowError(Exception):
 
 def run(path, *args, check=True, timeout=20):
     """在目标目录执行 Git，返回完整进程结果；失败不暴露远端凭据。"""
+    if sys.platform == 'win32':
+        raise FlowError('windows_process_control_unverified',
+                        'Windows Git 进程树监管尚未验证；未启动 Git，不授权操作。')
     env = dict(os.environ)
     for key in ('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR'):
         env.pop(key, None)
