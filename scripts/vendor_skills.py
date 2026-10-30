@@ -14,7 +14,7 @@ def files(root):
         for file in sorted((root/directory).rglob('*')):
             if '__pycache__' in file.parts:continue
             if file.is_symlink():raise ValueError('snapshot symlink')
-            if file.is_file():result[str(file.relative_to(root))]=hashlib.sha256(file.read_bytes()).hexdigest()
+            if file.is_file():result[file.relative_to(root).as_posix()]=hashlib.sha256(file.read_bytes()).hexdigest()
     result['sources.json']=hashlib.sha256((root/'sources.json').read_bytes()).hexdigest()
     return result
 
@@ -25,7 +25,7 @@ if __name__=='__main__':
     args=parser.parse_args()
     lock=ROOT/'skills.lock.json'
     if args.check:
-        expected=json.loads(lock.read_text())
+        expected=json.loads(lock.read_text(encoding='utf-8'))
         if files(ROOT)!=expected['files']:raise SystemExit('技能或模板快照被修改，请重新审阅和锁定。')
         if args.source and files(args.source)!=expected['files']:raise SystemExit('上游技能发生漂移，不能冒充当前快照。')
         print(json.dumps({'decision':'allow','files':len(expected['files'])}))
@@ -36,5 +36,5 @@ if __name__=='__main__':
             if (ROOT/directory).exists():shutil.rmtree(ROOT/directory)
             shutil.copytree(source/directory,ROOT/directory,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
         shutil.copyfile(source/'sources.json',ROOT/'sources.json')
-        lock.write_text(json.dumps({'schema_version':'1.0.0','source_package':'full-stack-skills/git-skills','source_version':json.loads((source/'.claude-plugin/plugin.json').read_text())['version'],'files':files(ROOT)},ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+        lock.write_text(json.dumps({'schema_version':'1.0.0','source_package':'full-stack-skills/git-skills','source_version':json.loads((source/'.claude-plugin/plugin.json').read_text(encoding='utf-8'))['version'],'files':files(ROOT)},ensure_ascii=False,sort_keys=True,indent=2)+'\n',encoding='utf-8')
         print(json.dumps({'decision':'applied','files':len(files(ROOT))}))

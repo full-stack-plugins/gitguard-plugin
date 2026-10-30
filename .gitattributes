@@ -1,0 +1,4 @@
+# Frozen snapshot identities are byte hashes; never rewrite checkout newlines.
+skills/** -text
+profiles/** -text
+sources.json -text

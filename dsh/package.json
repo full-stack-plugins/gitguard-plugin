@@ -1,6 +1,6 @@
 {
   "name": "gitflow",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "按项目约定治理 Git 分支、提交与流转，九技能加确定性门禁",
   "type": "module",
   "main": "lib/index.js",

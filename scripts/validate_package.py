@@ -11,11 +11,35 @@ sys.path.insert(0,str(ROOT/'scripts'))
 from gitflow.policy import validate
 from vendor_skills import files
 
+VERSION_MANIFESTS = ('package.json', 'dsh/package.json', 'kimi.plugin.json',
+                     '.claude-plugin/plugin.json', '.codex-plugin/plugin.json',
+                     '.zcode-plugin/plugin.json')
+
+
+def version_errors(root, expected):
+    errors = []
+    for relative in VERSION_MANIFESTS:
+        data = json.loads((root / relative).read_text(encoding='utf-8'))
+        if data.get('version') != expected:
+            errors.append('Plugin version mismatch: ' + relative)
+    marketplace = json.loads((root / 'marketplace.json').read_text(encoding='utf-8'))
+    for entry in marketplace.get('plugins', []):
+        if entry.get('source') in ('.', './') and entry.get('version') != expected:
+            errors.append('Plugin version mismatch: marketplace.json local entry')
+    module = ast.parse((root / 'scripts/gitflow/git.py').read_text(encoding='utf-8'))
+    versions = [ast.literal_eval(node.value) for node in module.body
+                if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'VERSION' for t in node.targets)]
+    if versions != [expected]:
+        errors.append('Plugin version mismatch: runtime')
+    return errors
+
+
 def validate_package():
     errors=[]
     for file in ROOT.rglob('*'):
         if file.is_symlink() and not file.resolve().is_relative_to(ROOT):errors.append('路径越界 '+str(file))
     manifest=json.loads((ROOT/'plugin.json').read_text(encoding='utf-8'))
+    errors.extend(version_errors(ROOT, manifest['version']))
     allowed={'$schema','name','version','description','author','homepage','repository','license','keywords','extensions'}
     if set(manifest)-allowed or manifest['$schema']!='https://agent-plugins.org/schemas/1.0.0/plugin.schema.json':errors.append('manifest 字段/版本')
     if not re.fullmatch(r'(?!.*(--|\.\.))[a-z0-9][a-z0-9.-]{0,62}[a-z0-9]|[a-z0-9]',manifest['name']):errors.append('manifest 名称')

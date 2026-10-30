@@ -84,3 +84,29 @@ class PackageTextEncodingTests(unittest.TestCase):
         from validate_package import validate_package
         with cp1252_default_text_files():
             self.assertEqual(validate_package(), [])
+
+class PackageVersionTests(unittest.TestCase):
+    def test_every_wrapper_and_runtime_share_version(self):
+        import json
+        from validate_package import version_errors
+        expected=json.loads((ROOT/'plugin.json').read_text(encoding='utf-8'))['version']
+        self.assertEqual(version_errors(ROOT,expected),[])
+
+    def test_stale_manifest_version_is_rejected(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from validate_package import VERSION_MANIFESTS,version_errors
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            for name in VERSION_MANIFESTS:
+                target=root/name;target.parent.mkdir(parents=True,exist_ok=True)
+                target.write_text(json.dumps({'version':'0.4.0'}),encoding='utf-8')
+            (root/'marketplace.json').write_text(json.dumps({'plugins':[{'source':'./','version':'0.4.0'}]}),encoding='utf-8')
+            runtime=root/'scripts/gitflow/git.py';runtime.parent.mkdir(parents=True)
+            runtime.write_text("VERSION = '0.4.0'\n",encoding='utf-8')
+            (root/'dsh/package.json').write_text('{"version":"0.3.0"}',encoding='utf-8')
+            self.assertEqual(version_errors(root,'0.4.0'),['Plugin version mismatch: dsh/package.json'])
+            (root/'dsh/package.json').write_text('{"version":"0.4.0"}',encoding='utf-8')
+            (root/'marketplace.json').write_text(json.dumps({'plugins':[{'source':'./','version':'0.3.0'},{'source':'elsewhere','version':'unrelated'}]}),encoding='utf-8')
+            self.assertEqual(version_errors(root,'0.4.0'),['Plugin version mismatch: marketplace.json local entry'])
