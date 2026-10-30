@@ -41,4 +41,4 @@ No pushes/remote CI/releases/new tools/real-repo hook changes. Preserve all eigh
 - [x] Fresh independent security/contract review, fix findings and rerun affected/full verification.
 - [x] Local commit only; report exact SHA and remaining external validation.
 
-Verification was executed, not universally green: see [local acceptance](../../xml-native-guard-acceptance.md) for sandbox failures and unexecuted platforms. External acceptance remains pending.
+Linux full-suite verification is green with the original Windows skips retained: see [local acceptance](../../xml-native-guard-acceptance.md) for the resolved sandbox-fixture failures and unexecuted platforms. External acceptance remains pending.

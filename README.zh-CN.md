@@ -42,14 +42,14 @@ gitguard policy . --operation migrate
 gitguard policy . --operation migrate --apply
 ```
 
-迁移保留旧文件，校验组织引用、摘要与锁定规则，并将解析后的规则展开到 XML。已有 XML 时拒绝迁移覆盖。旧 `branch`、`sync`、`release`、`recovery` 和 activation 入口保留为兼容接口，新用户主路径使用普通 Git。Rust 适配器继续调用相同的 Python 规则加载实现；本次变更未重建其二进制。打包 `skills/` 保留冻结的兼容引导。
+迁移保留旧文件，校验组织引用、摘要与锁定规则，并将解析后的规则展开到 XML。已有 XML 时拒绝迁移覆盖。旧 `branch`、`sync`、`release`、`recovery` 和 activation 入口保留为兼容接口，新用户主路径使用普通 Git。Rust 适配器继续调用相同的 Python 规则加载实现；本轮已本地重建未改动的 Rust 源码，并验证 XML CLI/MCP 配套。打包 `skills/` 保留冻结的兼容引导。
 
 ## 本地验证
 
 运行时为 Python 3.11+ 标准库。源码目录执行：
 
 ```bash
-python3 -m unittest discover -s tests
+python3 tests/run_isolated.py
 python3 scripts/validate_package.py
 ```
 

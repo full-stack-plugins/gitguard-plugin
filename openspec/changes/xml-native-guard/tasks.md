@@ -14,4 +14,4 @@ The detailed implementation sequence is in [the local plan](../../../docs/superp
 - [x] Run unittest discovery, existing package validators, and affected native fixture tests; independently review security/contracts and repair findings.
 - [x] Record exact tested revision, commands, results, skips and unverified platforms; do not infer production readiness or perform unauthorized external operations.
 
-Verification was executed, not universally green: see [local acceptance](../../../docs/xml-native-guard-acceptance.md) for sandbox failures and unexecuted platforms. External acceptance remains pending.
+Linux full-suite verification is green with the original Windows skips retained: see [local acceptance](../../../docs/xml-native-guard-acceptance.md) for the resolved sandbox-fixture failures and unexecuted platforms. External acceptance remains pending.

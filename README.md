@@ -42,14 +42,14 @@ gitguard policy . --operation migrate       # preview
 gitguard policy . --operation migrate --apply
 ```
 
-Migration preserves legacy files, validates organization references and locked rules, and flattens resolved rules into XML. Existing XML prevents migration from replacing it. `branch`, `sync`, `release`, `recovery` and older activation entrypoints remain compatibility interfaces; new onboarding uses normal Git. The Rust adapter delegates policy loading to the same Python implementation; its binary has not been rebuilt by this change. Packaged `skills/` remain frozen compatibility guidance.
+Migration preserves legacy files, validates organization references and locked rules, and flattens resolved rules into XML. Existing XML prevents migration from replacing it. `branch`, `sync`, `release`, `recovery` and older activation entrypoints remain compatibility interfaces; new onboarding uses normal Git. The Rust adapter delegates policy loading to the same Python implementation; its unchanged Rust source was rebuilt locally and exercised by the companion XML CLI/MCP tests. Packaged `skills/` remain frozen compatibility guidance.
 
 ## Development verification
 
 Python 3.11+ standard library is the runtime dependency. Run local checks from the checkout:
 
 ```bash
-python3 -m unittest discover -s tests
+python3 tests/run_isolated.py
 python3 scripts/validate_package.py
 ```
 
