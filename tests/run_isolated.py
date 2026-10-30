@@ -43,7 +43,10 @@ def main():
     try:
         with isolated_environment(args.temp_root) as (root,env):
             print('Verified clean temporary root: '+str(root),flush=True)
-            result=subprocess.run([sys.executable,'-m','unittest','discover','-s','tests','-p','test_*.py','-v'],cwd=ROOT,env=env,timeout=180)
+            # Full native macOS discovery can exceed 180s while individual cases
+            # keep progressing. Bound the whole suite below the 10-minute CI job;
+            # per-operation timeouts and all assertions remain unchanged.
+            result=subprocess.run([sys.executable,'-m','unittest','discover','-s','tests','-p','test_*.py','-v'],cwd=ROOT,env=env,timeout=480)
             return result.returncode
     except (OSError,RuntimeError,subprocess.TimeoutExpired) as exc:
         print('Test environment incomplete: '+str(exc),file=sys.stderr)
