@@ -148,8 +148,7 @@ def activate(path, apply=False):
 
 def migrate(path, apply=False):
     from .xml_policy import policy_path
-    from .initialization import guidance_snapshot, guidance_content, write_guidance
-    facts=require_repo(path)
+    facts=require_repo(path, inspect_worktree=False)
     if policy_path(facts).exists():raise FlowError('xml_already_exists','XML 已存在，拒绝旧规则覆盖。')
     legacy=activation_path(facts)
     candidate=safe_dir(facts['root'],'.gitflow/workflow.json')
@@ -167,7 +166,6 @@ def migrate(path, apply=False):
     if policy is None:raise FlowError('legacy_missing','没有可迁移的旧 JSON。')
     policy=resolve(policy,facts['root'])
     if 'extends' in policy:policy['extends']=None
-    agents=safe_dir(facts['root'],'AGENTS.md');before=guidance_snapshot(agents);content=guidance_content(before[1])
     snapshots={p:p.read_bytes() for p in (legacy,candidate) if p.exists()}
     if apply:
         with locked(facts):
@@ -177,9 +175,6 @@ def migrate(path, apply=False):
                 return p.exists() and p.read_bytes()==raw
             if policy_path(facts).exists() or any(not unchanged(p,raw) for p,raw in snapshots.items()):
                 raise FlowError('policy_changed','迁移输入已变化。')
-            if guidance_snapshot(agents)!=before:raise FlowError('agents_changed','AGENTS.md 已变化。')
             write_activation(facts,policy)
-            try:write_guidance(agents,before,content)
-            except (OSError,FlowError) as exc:raise FlowError('init_partial','XML 已写入，旧文件保留；重复 init 修复引导。') from exc
     return report('policy.migrate','applied' if apply else 'preview',profile=policy['profile'],mode='xml',
                   policy_sha256=digest(policy),legacy_preserved=True)

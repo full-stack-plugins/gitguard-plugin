@@ -7,24 +7,23 @@ No remote CI, push, release, real-repository hook changes, host login or trust c
 ## Verified implementation
 
 - XML-only policy load, eight profile round trips, explicit JSON migration with flattened organization rules.
-- Managed AGENTS block preservation/idempotence, expanded-output budget, interactive selection/cancellation, recoverable second-file failure.
+- Init selects a profile and initializes XML only; absent or arbitrary AGENTS remains unchanged. Rust project install alone owns receipt-protected guidance. Both command orders and repeated calls pass.
+- Init and explicit migration use metadata-only discovery: no git status, no project clean-filter execution. Ordinary operation discovery retains all worktree safety checks; uninspected cleanliness is unknown, never clean.
 - Real native commit/push fixture acceptance and before-execution Agent merge checks with unchanged refs/index/worktree on refusal.
 - Review regressions: ambiguous DWIM refs, Git replacement-object metadata masking, native merge message constraints, AGENTS output size.
 - Doctor detects same-version stale native runtime by exact bounded script snapshot, empty hooksPath overrides, redirected paths and missing executable permissions.
 - Actual offline candidate ZIP unpacked into a temporary directory: init, hooks, doctor, denied main commit, allowed feature commit and bare-remote push; damaged XML blocks another commit.
-- Actual Rust engine binary built offline against the existing locked GuardEngine dependency: XML-backed CLI/MCP negative/fix/recheck, corrupt/missing XML, legacy JSON non-fallback, linked worktree and all eight profile contexts verified. Rust source is unchanged; its old JSON-only test fixtures were migrated in the companion local GitGuard branch.
+- Actual Rust engine binary built offline against the existing locked GuardEngine dependency: XML-backed CLI/MCP negative/fix/recheck, corrupt/missing XML, legacy JSON non-fallback, linked worktree and all eight profile contexts verified. The companion Rust context now exports a versioned XML reference rather than copying rules into guidance; policy CLI/MCP continue to evaluate the full XML.
 
 ## Commands and results
 
-`python3 -m unittest discover -s tests -p 'test_xml*.py' -v`: 41 passed before adding the packaged-fixture test; that additional real package test passed separately. Independent reviewer reproduced the 41-test pass.
+`python3 tests/run_isolated.py --temp-root /var/tmp`: **238 methods; 221 passed, 17 original Windows skips, zero failures/errors**. No tests are filtered. Three harness tests preserve contaminated metadata and require genuine isolated child temporary directories.
 
-`python3 scripts/validate_package.py`: allow, no errors.
-`python3 scripts/vendor_skills.py --check`: allow, 90 snapshot files unchanged.
-`git diff --check`: passed.
+`python3 scripts/validate_package.py`, `python3 scripts/vendor_skills.py --check` and `git diff --check`: passed; 90 frozen skill files unchanged.
 
-Final full discovery via `python3 tests/run_isolated.py --temp-root /var/tmp`: **230 methods; 213 passed, 17 original Windows skips, zero failures/errors**. All tests are discovered; none are filtered or converted to skips. Three added harness tests verify detection/preservation of ancestor metadata and actual child-process temporary-directory isolation.
+Rust companion offline build passed; cargo test has **zero Rust unit tests**. Actual binary Python suites: **7 policy/context tests passed**, **8 install/init responsibility tests passed**, **11 installation methods: 10 passed, 1 existing six-tool combined test skipped** because only GitGuard is selected. Portable package structure and actual stdio discovery passed (`host_loaded: false`).
 
-Rust companion validation: `cargo build --locked --offline` and `cargo test --locked --offline` succeeded; cargo test contains **zero Rust tests**, so the seven real-binary Python CLI/MCP/context tests carry the behavior evidence. The original five Python tests first reproduced four failures with JSON-only fixtures; the updated seven tests passed.
+Independent review reproduced the clean-filter defect and verified its fix with a live ordinary-status control; metadata-only regression 5/5 and initialization 12/12 passed. No outstanding concrete review findings.
 
 ### Closed environment failures
 
@@ -66,8 +65,8 @@ No remote protection or universal local merge guarantee is claimed. Native hooks
 ## Candidate CI checklist (prepared, not executed)
 
 - Pushes require separate approval for both new `feat/xml-native-guard-20261030` branches; no workflows were dispatched here.
-- Before candidate CI, pair the GitGuard engine checkout with the new XML plugin SHA. Its existing `agent-installation.yml` still pins plugin `89e7c8d2`; it must not be mistaken for new XML-candidate evidence.
-- Run plugin `tests/run_isolated.py` on Linux x64, macOS arm64 and Windows x64; confirm all 17 Windows-only tests actually run on Windows, including cmd.exe, junction/sharing and Job Objects. Keep non-Windows skips visible.
-- Run the companion engine `tests/policy_check.py` against the actual built binary and paired plugin. It includes all eight context profiles, real CLI/MCP and worktree tests.
-- The shared GuardEngine `verify_guard_installation.py::test_gitflow_profiles_drift_and_refresh` still seeds JSON and expects JSON drift. That external fixture needs an explicitly coordinated XML update before claiming the old complete installation workflow validates this candidate. It was not modified or reported passing here.
+- The engine workflow now accepts an immutable full `plugin_sha`, with a fixed paired candidate default. It verifies engine/plugin/GuardEngine checkout identities. See the companion workflow for the exact pin; the external delivery report records both final commits.
+- Run plugin `tests/run_isolated.py` on Linux x64, macOS arm64 and Windows x64; confirm all 17 Windows-only tests actually execute on Windows. Keep applicability skips visible.
+- Run the companion engine policy, responsibility, installation and package steps against those exact checkouts. All four steps passed locally on Linux.
+- The shared GuardEngine verifier is unchanged. The local `tests/run_installation_xml.py` preserves its ten test methods, overrides only its obsolete JSON fixture, and adds an installation responsibility test. The workflow calls this adapter.
 - Validate newly assembled platform packages from those same commits; no formal runtime/default-lock changes or release are included.

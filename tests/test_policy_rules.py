@@ -13,7 +13,7 @@ class RuleCase(GitTestCase):
         folder.mkdir()
         (folder / 'workflow.json').write_text(json.dumps(policy))
         self.cli('policy', self.path, '--operation','migrate','--apply')
-        self.git('add', '.gitflow', 'app.txt','AGENTS.md')
+        self.git('add', '.gitflow', 'app.txt')
         self.git('commit', '-m', 'chore: configure')
         self.git('switch', '-c', 'feature/rules')
         return policy

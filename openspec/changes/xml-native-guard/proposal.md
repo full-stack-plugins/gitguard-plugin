@@ -7,7 +7,9 @@ The previous JSON candidate/activation workflow coupled governance to wrapper op
 ## What changes
 
 - Store the sole runtime policy in `<git-common-dir>/gitflow.xml`; preserve the eight profiles as initialization templates.
-- Require explicit initialization selection and apply; coordinate XML with a managed, non-authoritative AGENTS.md block.
+- Require explicit initialization selection and apply; init and legacy policy migration write XML only and never read or require AGENTS.md.
+- Keep reference-only AGENTS guidance under the separate Rust project installer and its strict receipt ownership; distinguish it from plugin launcher bootstrap.
+- Return reference schema/metadata from runtime context while retaining full-policy gate checks.
 - Import legacy JSON only through explicit migration, preserving originals and flattening pinned organization rules into XML.
 - Validate declared Claude Bash PreToolUse native merge requests before execution through the shared gate; keep ambiguous semantics unverified.
 - Supplement with explicitly installed native commit-msg/pre-push checks, actual merge state and bounded pending-ref/commit-range evaluation.
@@ -15,7 +17,7 @@ The previous JSON candidate/activation workflow coupled governance to wrapper op
 
 ## Scope and limits
 
-This is branch governance, not a Git client or universal terminal/IDE interceptor. Codex hook registration, login/trust, remote branch protection, trusted multi-clone/CI policy provisioning and rebuilt Rust binaries are outside this change. Fast-forward, deferred/no-verify commits, external Git libraries and undeclared hosts retain explicit coverage limits. Packaged skill snapshots remain frozen compatibility guidance.
+This is branch governance, not a Git client or universal terminal/IDE interceptor. Codex hook registration, login/trust, remote branch protection, trusted multi-clone/CI policy provisioning are outside this change. Fast-forward, deferred/no-verify commits, external Git libraries and undeclared hosts retain explicit coverage limits. Packaged skill snapshots remain frozen compatibility guidance.
 
 Local changes and disposable fixture hooks are authorized. Remote CI, push, release, new tools and actual user-repository hook mutation are not part of implementation acceptance. Current production readiness and macOS/Windows acceptance must not be inferred.
 

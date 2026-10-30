@@ -27,13 +27,16 @@ class BoundaryTests(GitTestCase):
         self.cli('init',self.path,'--profile','classic-gitflow','--apply',code=3)
         self.assertEqual(list(outside.iterdir()),[])
 
-    def test_generated_markdown_symlink_is_rejected(self):
+    def test_init_does_not_follow_agents_symlink(self):
         self.repository()
         directory=self.path/'.gitflow';directory.mkdir()
         outside=self.path.parent/'outside.md';outside.write_text('preserve')
         (self.path/'AGENTS.md').symlink_to(outside)
-        self.cli('init',self.path,'--profile','classic-gitflow','--apply',code=3)
+        self.cli('init',self.path,'--profile','classic-gitflow','--apply')
         self.assertEqual(outside.read_text(),'preserve')
+
+        self.assertTrue((self.path/'AGENTS.md').is_symlink())
+        self.assertTrue((self.path/'.git/gitflow.xml').is_file())
 
     def test_release_conflict_retains_partial_targets_and_abort_recovers(self):
         self.ready()

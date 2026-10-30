@@ -129,7 +129,7 @@ def main(argv=None):
         if a.command=='init' and not a.profile and sys.stdin.isatty() and not a.json:
             from .policy import ASSETS
             from .xml_policy import policy_path
-            facts=discover(a.path)
+            facts=discover(a.path, inspect_worktree=False)
             if facts['git_state']=='absent' or not policy_path(facts).exists():
                 choices=sorted(p.stem for p in ASSETS.glob('*.json'))
                 print('Select GitFlow profile: '+', '.join(choices), file=sys.stderr)

@@ -21,7 +21,7 @@ class XmlPackageTests(GitTestCase):
             self.assertEqual(p.returncode,code,p.stderr+p.stdout)
             return json.loads(p.stdout)
         cli('init',self.path,'--profile','github-flow','--apply')
-        self.git('add','AGENTS.md');self.git('commit','-m','docs: guidance')
+        self.assertFalse((self.path/'AGENTS.md').exists())
         cli('hooks',self.path,'--apply')
         r=cli('doctor',self.path)
         self.assertEqual(r['integrations']['native_hooks']['status'],'configured')

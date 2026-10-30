@@ -6,24 +6,36 @@ GitGuard 依据一份本地 XML 规则，检查分支名称、提交权限、合
 
 ## 在已有仓库中开始
 
-安装后的命令为 `gitguard`；在源码目录可用 `python3 scripts/gitflow.py` 加相同参数。
+请明确使用插件 Python 入口初始化规则及管理原生 Hook。Rust 项目安装器是另一个可执行文件，即使两者都叫 `gitguard`，也不能混用。
 
 ```bash
-gitguard init . --profile github-flow       # 预览，不写文件
-gitguard init . --profile github-flow --apply
-gitguard hooks .                           # 预览原生 Hook 安装
-gitguard hooks . --apply                   # 明确安装到当前仓库
-gitguard doctor .
-gitguard status .
-gitguard audit .
+python3 /absolute/gitguard-plugin/scripts/gitflow.py init . --profile github-flow       # 预览，不写文件
+python3 /absolute/gitguard-plugin/scripts/gitflow.py init . --profile github-flow --apply
+python3 /absolute/gitguard-plugin/scripts/gitflow.py hooks .                           # 预览原生 Hook 安装
+python3 /absolute/gitguard-plugin/scripts/gitflow.py hooks . --apply                   # 明确安装到当前仓库
+python3 /absolute/gitguard-plugin/scripts/gitflow.py doctor .
+python3 /absolute/gitguard-plugin/scripts/gitflow.py status .
+python3 /absolute/gitguard-plugin/scripts/gitflow.py audit .
 git switch -c feature/example
-# 编辑并暂存文件，包括生成的 AGENTS.md 引导
+# 编辑并暂存文件
 git commit -m "feat: add example"
 ```
 
 请按项目约定选择模板。八个初始化模板是：`centralized`、`classic-gitflow`、`git-maintainer`、`gitlab-environment`、`gitlab-release`、`github-flow`、`microsoft-release`、`trunk-based`。模板不是运行时规则来源。非交互初始化必须提供 `--profile`；未建立 Git 仓库时，还须明确传入 `--initialize-git`。
 
-初始化写入 `<git-common-dir>/gitflow.xml`，并在项目 `AGENTS.md` 中维护一个引导块，保留块外内容。关联 worktree 共用 XML，但检查各自的 Git 状态。独立 clone 必须重新明确初始化；Git 克隆不会传输该元数据规则。
+初始化只选择工作流并写入 `<git-common-dir>/gitflow.xml`，不读取、不写入 `AGENTS.md`，也不要求引导文件存在、格式正确或为普通文件。显式旧 JSON 规则迁移同样只负责 XML。关联 worktree 共用 XML，但检查各自的 Git 状态。独立 clone 必须重新明确初始化；Git 克隆不会传输该元数据规则。
+
+## 单独安装宿主引导
+
+插件 `/absolute/gitguard-plugin/bin/gitguard install --bin-dir /absolute/bin` 仅引导安装启动器，不写入 AGENTS.md。项目引导和宿主配置由另行构建的 Rust 安装器负责，须明确路径：
+
+```bash
+/absolute/rust-build/gitguard install --agents codex \
+  --project /absolute/project --gitflow-root /absolute/gitguard-plugin \
+  --python /absolute/python3
+```
+
+隔离验收夹具可指定 `--home /absolute/isolated-home`。只有 Rust 项目安装器拥有收据记录的 AGENTS 区块；它只引用 XML，不复制角色或规则。未知、被编辑、损坏的归属条目拒绝覆盖并保留。install 与 init 可按任意顺序执行，各自职责独立。Rust context 返回引用结构和规则元数据，显式规则检查仍评估完整规则。安装或初始化不代表自动强制执行，`automatic_enforcement` 仍为 false。
 
 ## 接线与覆盖范围
 
@@ -38,8 +50,8 @@ git commit -m "feat: add example"
 运行时只加载 XML，不回退到 JSON。先审查旧定义或激活快照，再明确迁移：
 
 ```bash
-gitguard policy . --operation migrate
-gitguard policy . --operation migrate --apply
+python3 /absolute/gitguard-plugin/scripts/gitflow.py policy . --operation migrate
+python3 /absolute/gitguard-plugin/scripts/gitflow.py policy . --operation migrate --apply
 ```
 
 迁移保留旧文件，校验组织引用、摘要与锁定规则，并将解析后的规则展开到 XML。已有 XML 时拒绝迁移覆盖。旧 `branch`、`sync`、`release`、`recovery` 和 activation 入口保留为兼容接口，新用户主路径使用普通 Git。Rust 适配器继续调用相同的 Python 规则加载实现；本轮已本地重建未改动的 Rust 源码，并验证 XML CLI/MCP 配套。打包 `skills/` 保留冻结的兼容引导。

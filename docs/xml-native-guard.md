@@ -7,24 +7,36 @@ This is the current runtime guide. It supersedes conflicting instructions in his
 From the intended repository, inspect then apply:
 
 ```bash
-gitguard discover .
-gitguard init . --profile github-flow
-gitguard init . --profile github-flow --apply
-gitguard policy . --operation describe
-gitguard hooks .
-gitguard hooks . --apply
-gitguard doctor .
-gitguard status .
-gitguard audit .
+python3 /absolute/gitguard-plugin/scripts/gitflow.py discover .
+python3 /absolute/gitguard-plugin/scripts/gitflow.py init . --profile github-flow
+python3 /absolute/gitguard-plugin/scripts/gitflow.py init . --profile github-flow --apply
+python3 /absolute/gitguard-plugin/scripts/gitflow.py policy . --operation describe
+python3 /absolute/gitguard-plugin/scripts/gitflow.py hooks .
+python3 /absolute/gitguard-plugin/scripts/gitflow.py hooks . --apply
+python3 /absolute/gitguard-plugin/scripts/gitflow.py doctor .
+python3 /absolute/gitguard-plugin/scripts/gitflow.py status .
+python3 /absolute/gitguard-plugin/scripts/gitflow.py audit .
 ```
 
 Source-checkout equivalent: `python3 scripts/gitflow.py ...`. Append `--json` for structured output. Noninteractive init without a profile fails instead of choosing a default; an interactive terminal can offer profile selection. Creating a Git repository requires `--initialize-git`. `--mode shared|local` is retained for compatibility; both use the single common-directory XML authority.
 
 Templates live in [`profiles/`](../profiles/): centralized, classic-gitflow, git-maintainer, gitlab-environment, gitlab-release, github-flow, microsoft-release, and trunk-based. Choose deliberately; GitGuard does not infer an organization's branching policy from repository history.
 
-Initialization writes two independently managed artifacts: XML in the Git common directory and one `<!-- GITGUARD_START -->` / `<!-- GITGUARD_END -->` guidance block in project `AGENTS.md`. Preview writes neither. Surrounding human text is preserved; malformed or duplicate markers refuse replacement. Generated guidance references XML without duplicating policy. Review and commit guidance through your ordinary Git workflow when appropriate.
+Initialization selects the requested GitFlow profile and writes only the common-directory XML policy. It does not read, write, create or validate AGENTS.md, and absent, edited, malformed, oversized, symlinked or nonregular guidance is not an init precondition. Repeat init validates existing XML without rewriting it; another profile cannot silently replace it. Explicit JSON policy migration is likewise XML-only.
 
-XML plus guidance is not a multi-file transaction. If XML succeeds and guidance fails, init reports `init_partial`, preserves XML, and requires fixing the guidance problem. Repeat init with the same profile to repair the block. Existing XML is not silently replaced by another profile; invalid XML must be reviewed and repaired explicitly rather than bypassed with JSON.
+## Separate executable responsibilities
+
+Two entrypoints may share the name `gitguard`, but have different installation responsibilities:
+
+| Explicit entrypoint | Responsibility |
+| --- | --- |
+| `/absolute/gitguard-plugin/bin/gitguard install --bin-dir /absolute/bin` | Bootstrap the plugin launcher; does not write AGENTS.md. |
+| `python3 /absolute/gitguard-plugin/scripts/gitflow.py init ...` | Select one of eight GitFlow profiles and write Git-common-directory XML. |
+| `/absolute/rust-build/gitguard install --agents codex --project /absolute/project --gitflow-root /absolute/gitguard-plugin --python /absolute/python3` | Rust project installation: own reference-only AGENTS instructions, host configuration and installation receipt. |
+
+Rust installation can use `--home /absolute/isolated-home` for disposable fixtures. Use explicit executable paths rather than assuming a PATH entry selects the intended implementation. Only Rust project installation owns its `GITGUARD_START` / `GITGUARD_END` instruction block and receipt. Unknown, edited or broken owned content is refused and preserved. Instructions refer to XML without copying roles, merge edges or metadata rules. Either order is supported without touching the other operation's artifact.
+
+Runtime context returns the reference schema and policy metadata rather than copied role/rule dictionaries. Explicit CLI/MCP policy checks still use the complete XML policy through the shared gate. Initialization reports `automatic_enforcement: false`; installation establishes configuration, not host execution, hook enforcement or technical quality approval.
 
 ## XML authority and format
 
@@ -60,8 +72,8 @@ The store rejects DTDs, entity declarations and external entity handling, namesp
 ## Explicit legacy migration
 
 ```bash
-gitguard policy . --operation migrate
-gitguard policy . --operation migrate --apply
+python3 /absolute/gitguard-plugin/scripts/gitflow.py policy . --operation migrate
+python3 /absolute/gitguard-plugin/scripts/gitflow.py policy . --operation migrate --apply
 ```
 
 Migration accepts reviewed legacy `.gitflow/workflow.json` and/or an activation snapshot discovered by the existing storage layout. It validates snapshot digests and refuses conflicting definitions. Organization references must resolve to their pinned digest and obey locked-rule restrictions before writing. Resolved rules are copied into XML and the runtime inheritance pointer is removed.
@@ -82,7 +94,7 @@ Native commit checks inspect real pending commit messages and provable merge sta
 
 Public `check` raises `ci_policy_unconfigured` until separately trusted XML provisioning exists. It cannot approve using PR-controlled XML or JSON, regardless of a passing local gate. [`ci.evaluate_range`](../scripts/gitflow/ci.py) retains a pure policy-argument range evaluator for bounded local/native use and tests; its existence does not configure remote CI or required checks.
 
-Compatibility `branch`, `sync`, `release`, `recovery`, and `policy --operation activate` remain; activation validates current XML and does not import JSON. They are outside the primary normal-Git onboarding path. The Rust adapter continues delegating to the same policy loader; its unchanged Rust source was rebuilt locally and verified with paired XML CLI/MCP fixtures. Packaged skill snapshots remain frozen compatibility guidance, subject to this current runtime contract.
+Compatibility `branch`, `sync`, `release`, `recovery`, and `policy --operation activate` remain; activation validates current XML and does not import JSON. They are outside the primary normal-Git onboarding path. The Rust adapter continues delegating to the same policy loader; its context returns metadata references while explicit policy checks consume full XML rules. Packaged skill snapshots remain frozen compatibility guidance, subject to this current runtime contract.
 
 ## Verification and remaining acceptance
 

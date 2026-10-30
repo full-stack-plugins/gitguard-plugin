@@ -4,8 +4,9 @@ The detailed implementation sequence is in [the local plan](../../../docs/superp
 
 - [x] Verify safe typed XML round trips for all eight profiles and v2 flattened rules; reject declarations/entities/XInclude, encoding attacks, unknown fields/types, resource excess and unsafe filesystem objects.
 - [x] Verify runtime XML-only loading and linked-worktree common policy with invoking-worktree state; missing/corrupt XML must not fall back to JSON.
-- [x] Verify explicit profile selection, read-only preview, managed AGENTS preservation, malformed-marker rejection, repeat-init repair and honest partial-write reporting.
-- [x] Verify explicit legacy migration, digest/conflict/locked-rule checks, flattened organization rules, original-file preservation and refusal to replace existing XML.
+- [x] Verify explicit profile selection, read-only preview and idempotent XML initialization; absent, arbitrary, edited, malformed, oversized and redirected AGENTS must be irrelevant and unchanged.
+- [x] Verify separate Rust installer receipt ownership, reference-only instructions and both init/install orders; plugin launcher bootstrap must not be described as the project instruction installer.
+- [x] Verify explicit legacy migration, digest/conflict/locked-rule checks, flattened organization rules, original-file preservation, AGENTS independence and refusal to replace existing XML.
 - [x] Verify declared Claude Bash PreToolUse merge allow/deny/ask behavior against local refs; denial must leave refs/index/worktree unchanged.
 - [x] Verify native commit-msg/pre-push fixture integration, pending OIDs/ranges, missing objects, mixed invalid refs, real merge state and absence of fabricated source roles.
 - [x] Verify explicit hook installation preserves custom hooks/managers and pins the interpreter; report actual host/platform acceptance separately.

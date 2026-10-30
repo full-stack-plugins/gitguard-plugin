@@ -35,23 +35,37 @@ The system SHALL preserve all validated policy fields using human-readable typed
 - WHEN a write is requested
 - THEN the unsafe/concurrently changed target is preserved and the operation fails explicitly.
 
-### Requirement: Explicit recoverable initialization
+### Requirement: XML-only initialization
 
-Initialization SHALL require explicit profile selection unless interactive selection is available. Preview SHALL write nothing. Apply SHALL maintain XML plus one non-authoritative managed AGENTS.md block, preserving outside content and rejecting malformed/duplicate markers. Existing XML SHALL NOT be silently replaced. Multi-file failure SHALL be reported as partial completion with repeat-init repair guidance.
+Initialization SHALL require explicit profile selection unless interactive selection is available. Preview SHALL write nothing. Apply SHALL select GitFlow and write the sole common-directory XML policy. Init SHALL NOT read, write, create, validate or require AGENTS.md. Existing XML SHALL NOT be silently replaced; repeat init SHALL preserve its bytes and modification time. Init SHALL report automatic enforcement as false.
 
 #### Scenario: No noninteractive profile
 - GIVEN an uninitialized repository and noninteractive input
 - WHEN init omits `--profile`
-- THEN it fails without selecting a default or writing artifacts.
+- THEN it fails without selecting a default or writing policy.
 
-#### Scenario: Guidance write fails after XML
-- GIVEN validated XML has been written and guidance replacement fails
-- WHEN init returns
-- THEN it reports partial completion and preserves XML; repeat init with the same policy can repair guidance without replacing policy.
+#### Scenario: Unusable guidance is irrelevant
+- GIVEN absent, arbitrary, edited, malformed, oversized, symlinked or nonregular AGENTS.md
+- WHEN explicit valid init runs
+- THEN XML initializes independently and AGENTS remains unchanged.
+
+### Requirement: Project installer alone owns guidance
+
+The separate Rust project installer SHALL exclusively own its receipt-backed AGENTS block and reference XML without copying roles or rules. Unknown, edited or broken owned content SHALL refuse replacement and preserve existing files. Plugin launcher bootstrap SHALL NOT be represented as project instruction installation. Runtime context SHALL expose reference schema/metadata rather than role/rule copies; explicit policy checks SHALL still evaluate complete XML rules.
+
+#### Scenario: Either operation order
+- GIVEN a disposable project and explicit trusted Rust adapter arguments
+- WHEN XML init precedes Rust project install, or Rust project install precedes XML init
+- THEN each operation preserves the other's independently owned artifact with install alone owning the AGENTS block.
+
+#### Scenario: Launcher bootstrap
+- GIVEN the plugin `bin/gitguard` entrypoint
+- WHEN `install --bin-dir` runs
+- THEN it bootstraps the launcher and does not initialize AGENTS.md.
 
 ### Requirement: Explicit flattened legacy migration
 
-Only `policy --operation migrate --apply` SHALL import legacy JSON. Migration SHALL validate digests, candidate/snapshot agreement, pinned organization references and locked rules; preserve originals; flatten resolved rules into XML; and remove runtime organization inheritance. Existing XML SHALL block replacement by migration.
+Only `policy --operation migrate --apply` SHALL import legacy JSON. Migration SHALL validate digests, candidate/snapshot agreement, pinned organization references and locked rules; preserve originals; flatten resolved rules into XML; and remove runtime organization inheritance. Existing XML SHALL block replacement by migration. Migration SHALL write XML only and SHALL NOT read, write or require AGENTS.md.
 
 #### Scenario: Locked rule weakened by candidate
 - GIVEN an organization baseline locks an enabled rule
@@ -102,9 +116,12 @@ Public CI check SHALL report `ci_policy_unconfigured` until a trusted XML distri
 
 ### Requirement: Compatibility and evidence boundaries
 
-Existing branch/sync/release/recovery entrypoints SHALL remain compatibility interfaces against XML. Rust adapter policy loading SHALL delegate to the shared implementation. Frozen skills and older JSON documentation SHALL be identified as compatibility/historical guidance. CLI/MCP/hook replay SHALL NOT be described as actual host acceptance, rebuilt binary evidence, production readiness or unexecuted platform validation.
+Existing branch/sync/release/recovery entrypoints SHALL remain compatibility interfaces against XML. Rust adapter policy loading SHALL delegate to the shared implementation. Frozen skills and older JSON documentation SHALL be identified as compatibility/historical guidance. CLI/MCP/hook replay SHALL NOT be described as actual host acceptance, unobserved binary execution, production readiness or unexecuted platform validation.
 
 #### Scenario: Missing native hooks
 - GIVEN valid policy but absent native hook wiring
 - WHEN doctor/status is requested
 - THEN missing hooks are visible and the result is unverified, without claiming host or server enforcement.
+
+### Initialization discovery boundary
+Init and explicit JSON-to-XML migration SHALL inspect repository metadata without running worktree status or project clean filters. Uninspected dirty state SHALL remain unknown. Other operational checks SHALL retain full worktree inspection. Existing AGENTS content, including malformed or nonregular paths, SHALL not be an initialization prerequisite.

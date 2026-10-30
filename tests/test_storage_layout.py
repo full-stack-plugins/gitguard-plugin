@@ -71,7 +71,6 @@ class StorageLayoutTests(GitTestCase):
         self.assertEqual((state / 'legacy/main/user-note.txt').read_text(), 'preserve me')
         self.assertTrue((state / 'worktrees/main/journal.json').exists())
         self.assertTrue((self.path / '.git/gitflow.xml').exists())
-        self.git('add', 'AGENTS.md'); self.git('commit', '-m', 'docs: guidance')
         self.assertEqual(self.git('status', '--porcelain'), '')
         self.cli('branch', self.path, '--operation', 'reconcile', '--apply')
 
@@ -124,7 +123,6 @@ class StorageLayoutTests(GitTestCase):
         self.cli('gate', linked, '--action', 'commit', code=3)
         self.assertTrue(old.exists())
         self.cli('policy', self.path, '--operation', 'migrate', '--apply')
-        self.git('add', 'AGENTS.md'); self.git('commit', '-m', 'docs: guidance')
         self.cli('branch', linked, '--operation', 'create', '--name', 'feature/migrate', '--source', 'develop', '--apply')
         self.assertFalse(legacy.exists())
         self.assertFalse(old.exists())
@@ -146,7 +144,7 @@ class StorageLayoutTests(GitTestCase):
     def test_readonly_new_layout_does_not_change_state_or_config(self):
         self.repository()
         self.activate(mode='local')
-        files = [self.path / '.git/config', self.path / '.git/info/exclude', self.path / '.git/gitflow.xml', self.path / 'AGENTS.md', *[p for p in (self.path / '.gitflow').rglob('*') if p.is_file()]]
+        files = [self.path / '.git/config', self.path / '.git/info/exclude', self.path / '.git/gitflow.xml', *[p for p in (self.path / '.gitflow').rglob('*') if p.is_file()]]
         before = {p: (p.read_bytes(), p.stat().st_mtime_ns) for p in files}
         self.cli('gate', self.path, '--action', 'commit', code=1)
         self.cli('init', self.path, '--profile', 'classic-gitflow', '--mode', 'local')

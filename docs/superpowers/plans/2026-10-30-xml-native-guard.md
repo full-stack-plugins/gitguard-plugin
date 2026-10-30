@@ -3,7 +3,7 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans. Steps use checkbox syntax.
 
 **Goal:** Initialize one safe XML policy and guard ordinary Git actions.
-**Architecture:** XML storage feeds existing policy/gate APIs; initialization coordinates XML and managed AGENTS guidance; hooks consume shared policy without Git-client wrapper requirements.
+**Architecture:** XML storage feeds existing policy/gate APIs; initialization selects GitFlow and writes XML only; the separate Rust project installer alone owns reference-only AGENTS guidance; hooks consume shared policy without Git-client wrapper requirements.
 **Tech Stack:** Python 3.11+ stdlib, Git, existing test environment.
 **Spec:** openspec/changes/xml-native-guard/design.md
 
@@ -12,7 +12,8 @@ No pushes/remote CI/releases/new tools/real-repo hook changes. Preserve all eigh
 
 ## Review Focus
 - DTD/entity/encoding/oversized/deep XML must reject before expansion.
-- Broken markers and existing XML must preserve user bytes.
+- Init/migration must not inspect or require AGENTS; Rust installation alone enforces strict owned-marker/receipt preservation.
+- Existing XML must preserve policy bytes on idempotent init or refusal.
 - Linked worktree uses common policy, own Git state.
 - Agent merge before execution changes no refs/index/worktree.
 - Missing/unknown push objects or mixed invalid refs never partially pass.
@@ -23,9 +24,10 @@ No pushes/remote CI/releases/new tools/real-repo hook changes. Preserve all eigh
 - [x] GREEN targeted tests; independent review before final commit.
 
 ### Task 2: Policy and initialization
-- [x] RED missing XML/no legacy fallback, init selection/AGENTS preservation/recovery/worktree tests.
+- [x] RED missing XML/no legacy fallback, init selection/XML idempotence/AGENTS independence/worktree tests.
 - [x] Switch policy.load/write_activation to XML; explicit migrate operation only for legacy JSON, flatten organization snapshot.
-- [x] Implement initialization.py for managed block and coordinated apply; CLI interactive profile selection, no noninteractive default.
+- [x] Implement initialization.py for XML-only apply; CLI interactive profile selection, no noninteractive default. No guidance APIs or migration flags.
+- [x] Verify distinct launcher bootstrap vs Rust project installer responsibilities, reference-only installed instructions, metadata-only context, and both init/install orders.
 - [x] Adapt diagnostic and CI semantics to XML authority; preserve existing JSON only as historical migration input.
 
 ### Task 3: Hooks

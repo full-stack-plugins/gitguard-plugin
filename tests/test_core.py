@@ -46,9 +46,6 @@ class GitTestCase(unittest.TestCase):
 
     def activate(self, profile='classic-gitflow', mode='shared'):
         result=self.cli('init', self.path, '--profile', profile, '--mode', mode, '--apply')
-        # Initialization intentionally adds guidance; commit it in this disposable
-        # fixture so operation tests start from a clean working tree.
-        self.git('add','AGENTS.md');self.git('commit','-m','docs: GitGuard guidance')
         return result
 
 

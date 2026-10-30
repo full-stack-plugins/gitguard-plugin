@@ -128,20 +128,28 @@ class XMLPolicyTests(unittest.TestCase):
             self.assertFalse(list(Path(temp).glob('.gitflow-write-*')))
 
     def test_unsafe_files(self):
-        for kind in ('symlink', 'hardlink', 'directory', 'fifo', 'parent'):
+        for kind in ('symlink', 'hardlink', 'directory', 'parent'):
             with self.subTest(kind=kind), tempfile.TemporaryDirectory() as temp:
                 base = Path(temp); common = base / 'common'; common.mkdir()
                 target = common / 'gitflow.xml'; other = base / 'other'; other.write_bytes(xml.encode(self.policy()))
                 if kind == 'symlink': target.symlink_to(other)
                 elif kind == 'hardlink': os.link(other, target)
                 elif kind == 'directory': target.mkdir()
-                elif kind == 'fifo': os.mkfifo(target)
                 else:
                     common.rmdir(); common.symlink_to(base, target_is_directory=True)
                 facts = {'common_dir': str(common)}
                 with self.assertRaises(FlowError): xml.read_policy(facts)
                 with self.assertRaises(FlowError): xml.write_policy(facts, self.policy())
                 self.assertEqual(other.read_bytes(), xml.encode(self.policy()))
+
+    @unittest.skipUnless(hasattr(os, 'mkfifo'), 'POSIX FIFO is not available on this operating system')
+    def test_fifo_policy_is_rejected_without_blocking(self):
+        with tempfile.TemporaryDirectory() as temp:
+            target=Path(temp)/'gitflow.xml';os.mkfifo(target)
+            facts={'common_dir':temp}
+            with self.assertRaises(FlowError):xml.read_policy(facts)
+            with self.assertRaises(FlowError):xml.write_policy(facts,self.policy())
+            self.assertTrue(target.exists())
 
     def test_write_detects_replaced_identity(self):
         with tempfile.TemporaryDirectory() as temp:

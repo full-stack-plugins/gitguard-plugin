@@ -6,24 +6,36 @@ GitGuard checks branch names, commit permissions, merge direction and configured
 
 ## Start in an existing repository
 
-The installed command is `gitguard`. From a source checkout, use `python3 scripts/gitflow.py` with the same arguments.
+Use the plugin Python entrypoint explicitly for policy initialization and native hooks. The Rust project installer is a different executable, even when both commands are named `gitguard`.
 
 ```bash
-gitguard init . --profile github-flow       # preview; writes nothing
-gitguard init . --profile github-flow --apply
-gitguard hooks .                           # preview native hook installation
-gitguard hooks . --apply                   # explicit installation in this repository
-gitguard doctor .
-gitguard status .
-gitguard audit .
+python3 /absolute/gitguard-plugin/scripts/gitflow.py init . --profile github-flow       # preview; writes nothing
+python3 /absolute/gitguard-plugin/scripts/gitflow.py init . --profile github-flow --apply
+python3 /absolute/gitguard-plugin/scripts/gitflow.py hooks .                           # preview native hook installation
+python3 /absolute/gitguard-plugin/scripts/gitflow.py hooks . --apply                   # explicit installation in this repository
+python3 /absolute/gitguard-plugin/scripts/gitflow.py doctor .
+python3 /absolute/gitguard-plugin/scripts/gitflow.py status .
+python3 /absolute/gitguard-plugin/scripts/gitflow.py audit .
 git switch -c feature/example
-# edit and stage your files, including the generated AGENTS.md guidance
+# edit and stage your files
 git commit -m "feat: add example"
 ```
 
 Choose a profile that matches the repository. The eight initialization templates are `centralized`, `classic-gitflow`, `git-maintainer`, `gitlab-environment`, `gitlab-release`, `github-flow`, `microsoft-release`, and `trunk-based`. They are templates, not runtime authorities. Noninteractive initialization requires `--profile`; a missing repository additionally requires `--initialize-git` to create Git metadata.
 
-Initialization writes `<git-common-dir>/gitflow.xml` and one managed block in the repository's `AGENTS.md`. It preserves surrounding guidance. Linked worktrees share XML and are evaluated against their own Git state. A separate clone needs its own explicit initialization; Git does not transfer this metadata policy when cloning.
+Initialization selects a profile and writes `<git-common-dir>/gitflow.xml` only. It neither reads nor writes `AGENTS.md`, and guidance contents or file type are not initialization preconditions. Explicit legacy policy migration has the same XML-only responsibility. Linked worktrees share XML and are evaluated against their own Git state. A separate clone needs its own explicit initialization; Git does not transfer this metadata policy when cloning.
+
+## Install host guidance separately
+
+The plugin launcher bootstrap, `/absolute/gitguard-plugin/bin/gitguard install --bin-dir /absolute/bin`, installs the launcher; it does not write AGENTS.md. To install project instructions and host configuration, invoke the separately built Rust executable explicitly:
+
+```bash
+/absolute/rust-build/gitguard install --agents codex \
+  --project /absolute/project --gitflow-root /absolute/gitguard-plugin \
+  --python /absolute/python3
+```
+
+Use `--home /absolute/isolated-home` for disposable acceptance fixtures. Rust project installation alone owns its receipt-backed AGENTS block. Instructions reference XML without copying roles or rules; unknown, edited or broken owned entries are refused and preserved. Install and policy init can run in either order because they have separate responsibilities. Rust context exposes a reference schema and policy metadata, while explicit policy checks continue evaluating full rules. Neither installation nor initialization enables automatic enforcement (`automatic_enforcement` remains false).
 
 ## What is enforced
 
@@ -38,11 +50,11 @@ Public CI `check` remains unconfigured until a separately trusted XML distributi
 Runtime loads XML only, without JSON fallback. To migrate a reviewed legacy definition or activation snapshot:
 
 ```bash
-gitguard policy . --operation migrate       # preview
-gitguard policy . --operation migrate --apply
+python3 /absolute/gitguard-plugin/scripts/gitflow.py policy . --operation migrate       # preview
+python3 /absolute/gitguard-plugin/scripts/gitflow.py policy . --operation migrate --apply
 ```
 
-Migration preserves legacy files, validates organization references and locked rules, and flattens resolved rules into XML. Existing XML prevents migration from replacing it. `branch`, `sync`, `release`, `recovery` and older activation entrypoints remain compatibility interfaces; new onboarding uses normal Git. The Rust adapter delegates policy loading to the same Python implementation; its unchanged Rust source was rebuilt locally and exercised by the companion XML CLI/MCP tests. Packaged `skills/` remain frozen compatibility guidance.
+Migration preserves legacy files, validates organization references and locked rules, and flattens resolved rules into XML. Existing XML prevents migration from replacing it. `branch`, `sync`, `release`, `recovery` and older activation entrypoints remain compatibility interfaces; new onboarding uses normal Git. The Rust adapter delegates policy loading to the same Python implementation; runtime context exposes metadata references while policy checks consume the complete policy. Packaged `skills/` remain frozen compatibility guidance.
 
 ## Development verification
 

@@ -1,7 +1,7 @@
 name: Validate GitFlow
 on:
   push:
-    branches: [main, fix/cli-install-safety-20261028]
+    branches: [main, fix/cli-install-safety-20261028, feat/xml-native-guard-20261030]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -29,7 +29,7 @@ jobs:
         run: python -c "import platform; print(platform.platform(), platform.machine()); assert platform.machine().lower() == '${{ matrix.machine }}'"
       - run: python3 scripts/validate_package.py
       - run: python3 scripts/vendor_skills.py --check
-      - run: python3 -m unittest discover -s tests -p 'test_*.py'
+      - run: python3 tests/run_isolated.py
   windows-native-candidate:
     name: Windows x64 native Git safety candidate
     runs-on: windows-2022
@@ -59,6 +59,9 @@ jobs:
       - name: Native storage migration contracts
         if: ${{ !cancelled() }}
         run: python scripts/candidate_test.py windows-storage python -B -m unittest discover -s tests -p test_storage_layout.py
+      - name: XML policy, initialization and native guard candidate
+        if: ${{ !cancelled() }}
+        run: python scripts/candidate_test.py windows-xml python -B -m unittest discover -s tests -p 'test_xml*.py'
       - name: Retain candidate evidence without publishing
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
