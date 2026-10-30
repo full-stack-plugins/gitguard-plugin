@@ -4,6 +4,13 @@ GitGuard checks branch names, commit permissions, merge direction and configured
 
 [简体中文](README.zh-CN.md) · [Usage and safety](docs/xml-native-guard.md) · [XML contract](openspec/changes/xml-native-guard/specs/xml-native-guard/spec.md)
 
+## Skill entrypoints
+
+`gitguard-awesome`、`gitguard-workflow`、`gitguard-init`、`gitguard-branch`、`gitguard-audit`、`gitguard-commit`、`gitguard-sync`、`gitguard-release`、`gitguard-recovery`
+
+These are Agent skill names, not new Git subcommands. Legacy `git-*` skill aliases are no longer registered; refresh/reload the candidate plugin in existing sessions. Continue using ordinary `git commit`, `git push`, etc. CLI capabilities are unchanged. See [the migration map](docs/skill-namespace.md).
+
+
 ## Start in an existing repository
 
 Use the plugin Python entrypoint explicitly for policy initialization and native hooks. The Rust project installer is a different executable, even when both commands are named `gitguard`.

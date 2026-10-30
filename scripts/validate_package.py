@@ -34,8 +34,31 @@ def version_errors(root, expected):
     return errors
 
 
+SKILL_NAMES = {'gitguard-' + name for name in (
+    'awesome', 'workflow', 'init', 'branch', 'audit', 'commit', 'sync', 'release', 'recovery')}
+
+
+def skill_name_errors(root):
+    errors = []
+    directory = root / 'skills'
+    observed = {p.name for p in directory.iterdir() if p.is_dir()} if directory.is_dir() else set()
+    if observed != SKILL_NAMES:
+        errors.append('Public skill directories must use the nine gitguard-* identities')
+    for name in sorted(SKILL_NAMES & observed):
+        try:
+            text = (directory / name / 'SKILL.md').read_text(encoding='utf-8')
+            prompt = (directory / name / 'agents/openai.yaml').read_text(encoding='utf-8')
+            if not text.startswith('---\nname: ' + name + '\n'):
+                errors.append('Skill frontmatter identity mismatch: ' + name)
+            if 'display_name: "' + name + '"' not in prompt or '$' + name not in prompt:
+                errors.append('Skill host prompt identity mismatch: ' + name)
+        except (OSError, UnicodeError):
+            errors.append('Missing or unreadable skill identity: ' + name)
+    return errors
+
+
 def validate_package():
-    errors=[]
+    errors=skill_name_errors(ROOT)
     for file in ROOT.rglob('*'):
         if file.is_symlink() and not file.resolve().is_relative_to(ROOT):errors.append('路径越界 '+str(file))
     manifest=json.loads((ROOT/'plugin.json').read_text(encoding='utf-8'))

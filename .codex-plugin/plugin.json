@@ -17,8 +17,8 @@
     "displayName": "GitGuard（分支规范防护）",
     "shortDescription": "Branch naming, creation, commits, sync and release backports",
     "defaultPrompt": [
-      "识别本项目 Git 规范并执行只读审计",
-      "预览符合项目工作流的任务分支"
+      "使用 $gitguard-workflow 识别本项目工作流；规则以 gitflow.xml 为准",
+      "使用 $gitguard-audit 对当前项目进行只读规范审计"
     ],
     "brandColor": "#F05032",
     "logo": "./assets/logo.png",

@@ -4,6 +4,13 @@ GitGuard 依据一份本地 XML 规则，检查分支名称、提交权限、合
 
 [English](README.md) · [详细用法与安全边界](docs/xml-native-guard.md) · [XML 契约](openspec/changes/xml-native-guard/specs/xml-native-guard/spec.md)
 
+## 技能入口
+
+`gitguard-awesome`、`gitguard-workflow`、`gitguard-init`、`gitguard-branch`、`gitguard-audit`、`gitguard-commit`、`gitguard-sync`、`gitguard-release`、`gitguard-recovery`
+
+这些是 Agent 技能名称，不是新的原生 Git 子命令。旧 `git-*` 技能不再注册；现有会话需刷新或重新加载候选插件。使用普通 `git commit`、`git push` 等命令；本次没有改变 CLI 能力。参见[改名映射与候选验证](docs/skill-namespace.md)。
+
+
 ## 在已有仓库中开始
 
 请明确使用插件 Python 入口初始化规则及管理原生 Hook。Rust 项目安装器是另一个可执行文件，即使两者都叫 `gitguard`，也不能混用。
