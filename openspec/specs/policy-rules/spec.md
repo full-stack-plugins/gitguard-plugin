@@ -1,5 +1,7 @@
 # policy-rules Specification
 
+> **Authority update — XML native guard:** The current contract is [XML native governance](../../changes/xml-native-guard/specs/xml-native-guard/spec.md). Runtime policy is exclusively `<git-common-dir>/gitflow.xml`; legacy JSON and organization snapshots are explicit migration inputs, then flattened into XML. Public CI `check` remains unconfigured until separately trusted XML distribution exists. Conflicting JSON authority, implicit activation, baseline runtime lookup, and public CI enablement statements below describe the historical contract and are superseded.
+
 ## Purpose
 为 AI、CLI 和原生 Hook 提供一致、可解释的项目 Git 规则检查，允许团队渐进启用元数据约定，同时保持既有工作流保护、退出码和显式变更授权不被弱化。
 ## Requirements

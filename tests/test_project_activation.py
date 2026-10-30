@@ -41,7 +41,7 @@ class ProjectActivationTests(GitTestCase):
 
     def test_repository_subdirectory_and_unborn_activate(self):
         self.repository(commit=False)
-        self.activate(mode='local')
+        self.cli('init',self.path,'--profile','classic-gitflow','--apply')
         nested = self.path / 'src'; nested.mkdir()
         result = self.hook('SessionStart', cwd=nested)
         self.assertIn('classic-gitflow', result['hookSpecificOutput']['additionalContext'])

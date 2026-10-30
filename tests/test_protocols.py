@@ -114,10 +114,10 @@ class ProtocolTests(GitTestCase):
         r=self.hook('PreToolUse','/usr/bin/git commit -m blocked')
         self.assertEqual(r['hookSpecificOutput']['permissionDecision'],'deny')
 
-    def test_hook_does_not_approve_different_native_merge_or_pull_semantics(self):
+    def test_hook_checks_ordinary_native_merge_direction(self):
         self.repository();self.activate(mode='local');self.git('branch','develop');self.git('branch','feature/a','develop');self.git('switch','develop')
         r=self.hook('PreToolUse','git merge feature/a')
-        self.assertEqual(r['hookSpecificOutput']['permissionDecision'],'ask')
+        self.assertEqual(r['hookSpecificOutput']['permissionDecision'],'allow')
 
     def test_native_hooks_allow_bound_plugin_integration(self):
         self.repository();self.activate(mode='local');self.git('branch','develop');self.cli('hooks',self.path,'--apply')

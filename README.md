@@ -1,74 +1,60 @@
-# GitGuard（分支规范防护）
+# GitGuard
 
-> 分支、提交、同步、发布、Hook 与 CI 检查已实现。
+GitGuard checks branch names, commit permissions, merge direction and configured commit metadata against one local XML policy. Use ordinary Git after explicit initialization and integration review.
 
-**版本**：0.4.0 · **许可证**：Apache-2.0 · **技能**：9 个
+[简体中文](README.zh-CN.md) · [Usage and safety](docs/xml-native-guard.md) · [XML contract](openspec/changes/xml-native-guard/specs/xml-native-guard/spec.md)
 
-[English](README.en.md)
+## Start in an existing repository
 
-## 项目定位
+The installed command is `gitguard`. From a source checkout, use `python3 scripts/gitflow.py` with the same arguments.
 
-GitGuard 是 Partme Guard 研发防护体系中的独立插件，命令前缀为 gitguard。它不依赖统一总命令，可独立安装、独立发版、独立执行。
+```bash
+gitguard init . --profile github-flow       # preview; writes nothing
+gitguard init . --profile github-flow --apply
+gitguard hooks .                           # preview native hook installation
+gitguard hooks . --apply                   # explicit installation in this repository
+gitguard doctor .
+gitguard status .
+gitguard audit .
+git switch -c feature/example
+# edit and stage your files, including the generated AGENTS.md guidance
+git commit -m "feat: add example"
+```
 
-## CLI 命令
+Choose a profile that matches the repository. The eight initialization templates are `centralized`, `classic-gitflow`, `git-maintainer`, `gitlab-environment`, `gitlab-release`, `github-flow`, `microsoft-release`, and `trunk-based`. They are templates, not runtime authorities. Noninteractive initialization requires `--profile`; a missing repository additionally requires `--initialize-git` to create Git metadata.
 
-| 命令 | 类型 |
-| :--- | :--- |
-| install | 独立入口 |
-| uninstall | 独立入口 |
-| upgrade | 独立入口 |
-| version | 独立入口 |
-| doctor | 独立入口 |
-| status | 独立入口 |
-| discover | 独立入口 |
-| init | 独立入口 |
-| check | 独立入口 |
-| audit | 独立入口 |
-| policy | 独立入口 |
-| branch | 独立入口 |
-| sync | 独立入口 |
-| release | 独立入口 |
-| hooks | 独立入口 |
-| report | 独立入口 |
-| completion | 独立入口 |
+Initialization writes `<git-common-dir>/gitflow.xml` and one managed block in the repository's `AGENTS.md`. It preserves surrounding guidance. Linked worktrees share XML and are evaluated against their own Git state. A separate clone needs its own explicit initialization; Git does not transfer this metadata policy when cloning.
 
-## 安装
+## What is enforced
 
-~~~bash
-codex plugin marketplace add partme-ai/full-stack-plugins
-codex plugin add gitguard-plugin@full-stack-plugins
-~~~
+[Declared Agent hooks](hooks/hooks.json) use the Claude hook protocol; `PreToolUse` matches `Bash`. An explicit supported native merge is checked before execution against actual local refs. Ambiguous, dynamic or unsupported commands require review (`ask`/unverified). This does not establish interception of every terminal or IDE command. No Codex hook registration or login/trust change is included.
 
-## 快速开始
+Explicitly installed Git `commit-msg` and `pre-push` hooks add native checks. Existing custom hooks or hook managers are preserved rather than overwritten. `doctor` reports wiring and uncertainty; missing hooks produce an unverified result. Fast-forward merges, `--no-commit`, `--no-verify`, other Git libraries and host integrations have coverage limits. See [the detailed boundaries](docs/xml-native-guard.md#integration-boundaries).
 
-~~~bash
-gitguard version
-gitguard doctor
-gitguard status
-~~~
+Public CI `check` remains unconfigured until a separately trusted XML distribution channel exists. PR-supplied XML and legacy JSON cannot approve the PR that supplies them. The internal range evaluation kernel is not a remote enforcement guarantee.
 
-## 当前状态
+## Existing installations
 
-分支、提交、同步、发布、Hook 与 CI 检查已实现。
+Runtime loads XML only, without JSON fallback. To migrate a reviewed legacy definition or activation snapshot:
 
-没有真实执行证据时，不报告 PASS；未实现能力报告 DESIGN_ONLY 或 UNVERIFIED。
+```bash
+gitguard policy . --operation migrate       # preview
+gitguard policy . --operation migrate --apply
+```
 
-## 架构
+Migration preserves legacy files, validates organization references and locked rules, and flattens resolved rules into XML. Existing XML prevents migration from replacing it. `branch`, `sync`, `release`, `recovery` and older activation entrypoints remain compatibility interfaces; new onboarding uses normal Git. The Rust adapter delegates policy loading to the same Python implementation; its binary has not been rebuilt by this change. Packaged `skills/` remain frozen compatibility guidance.
 
-命令入口、生命周期、只读检查和证据边界见 product-docs/GitGuard/ 与 docs/。
+## Development verification
 
-## 边界
+Python 3.11+ standard library is the runtime dependency. Run local checks from the checkout:
 
-- 不合并为 Partme Guard 总命令。
-- 不替代其他 Guard 的专业判断。
-- 不自动提交、推送或修改用户代码。
+```bash
+python3 -m unittest discover -s tests
+python3 scripts/validate_package.py
+```
 
-## 验证
+These checks and isolated repository fixtures do not establish actual host installation acceptance, production readiness, or current macOS/Windows validation. No real repository hook installation, remote CI run, push or release is implied by this documentation.
 
-~~~bash
-python3 -m pytest -q
-~~~
+The [XML design](openspec/changes/xml-native-guard/design.md) and [current usage guide](docs/xml-native-guard.md) supersede conflicting JSON-runtime instructions in older `docs/` and `product-docs/` material.
 
-## 许可证
-
-Apache-2.0
+License: [Apache-2.0](LICENSE).

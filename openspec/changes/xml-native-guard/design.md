@@ -1,0 +1,15 @@
+# XML native GitGuard design
+
+User-approved implementation scope: branch governance, not a Git client. Runtime policy has one authority: `<git-common-dir>/gitflow.xml`, shared across linked worktrees, evaluated against the invoking worktree. Eight existing profile assets are initialization templates only. JSON activation snapshots are never fallback policy; migration is explicit and preserves originals.
+
+Init requires an explicit profile unless interactive selection is possible. Preview writes nothing. Apply writes validated XML plus one managed AGENTS.md guidance block; block-external content is preserved. Existing malformed/duplicate markers refuse replacement. Multi-file failure is reported and idempotently recoverable, never presented as atomic completion. Existing XML is not silently replaced. The guidance references XML without copying policy.
+
+XML parsing rejects DTD/entities, external resolution, XInclude, excessive resources, unknown schemas/fields, redirected/nonregular files. Writes use bounded validation, locks, safe file identity, same-directory atomic replacement. V2 organization configuration is flattened during explicit legacy migration; runtime rules do not depend on a second JSON policy authority.
+
+Existing supported Agent PreToolUse inspects explicit native merge argv and actual local refs using the shared gate, without requiring sync journals. Ambiguous/dynamic arguments remain ask/unverified or deny; policy violations deny before execution. This is supported-host hook protocol validation, not blanket terminal or IDE enforcement. Git commit-msg/pre-push provide supplementary native blocking and explicit failures; actual pending ref/OID and commit ranges are checked. Native merge exceptions use real merge state when provable, never fabricate source role. FF/no-commit/no-verify and third-party Git-library limits are documented. No PR-only workflow is imposed.
+
+Git hooks remain explicit installation within init follow-up or hooks apply; existing manager/hooks are not overwritten, status says not enabled. Isolation tests may install only in disposable repos. Runtime interpreter is pinned to the installing interpreter; Windows native hook execution requires actual Git-for-Windows validation. Codex login/trust is separate and unchanged.
+
+Compatibility: branch/sync/release/recovery remain implemented against XML, but leave the primary onboarding path. Old JSON migration requires explicit operation and no existing XML. CI without a separately trusted XML distribution channel reports unverified rather than trusting PR content or legacy JSON. Rust adapter continues delegating to shared policy; no duplicate engine policy rules.
+
+Verification: negative-before-fix tests; all eight templates, XML attacks, managed markers, idempotence, multi-file failure, worktrees, native commit/push, Agent merge deny with unchanged refs/index/worktree; complete existing suite with intentional changed-contract tests updated transparently. No remote CI, new tool installation, push, release, trust or real repository hook mutation.

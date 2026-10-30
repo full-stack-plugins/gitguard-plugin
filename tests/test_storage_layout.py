@@ -2,6 +2,7 @@
 import json
 import shutil
 import shlex
+import sys
 from pathlib import Path
 
 from test_core import GitTestCase
@@ -11,7 +12,8 @@ class StorageLayoutTests(GitTestCase):
     def test_local_state_is_hidden_and_ignored(self):
         self.repository()
         self.activate(mode='local')
-        self.assertTrue((self.path / '.gitflow/state/activation.json').is_file())
+        self.assertTrue((self.path / '.git/gitflow.xml').is_file())
+        self.assertFalse((self.path / '.gitflow/state/activation.json').exists())
         self.assertFalse((self.path / '.git/gitflow').exists())
         self.assertFalse((self.path / '.gitflow/workflow.json').exists())
         self.assertEqual(self.git('status', '--porcelain'), '')
@@ -37,7 +39,7 @@ class StorageLayoutTests(GitTestCase):
         metadata = self.path.parent / 'metadata'
         self.git('init', '-b', 'main', '--separate-git-dir', str(metadata))
         self.activate(mode='local')
-        self.assertTrue((self.path / '.gitflow/state/activation.json').exists())
+        self.assertTrue((metadata / 'gitflow.xml').exists())
         self.assertFalse((metadata / 'gitflow').exists())
 
     def legacy(self):
@@ -58,16 +60,18 @@ class StorageLayoutTests(GitTestCase):
     def test_readonly_legacy_then_apply_migrates_without_loss(self):
         legacy = self.legacy()
         before = {p.name: p.read_bytes() for p in legacy.iterdir()}
-        self.cli('init', self.path, '--mode', 'local')
+        self.cli('policy', self.path, '--operation', 'migrate')
         self.assertFalse((self.path / '.gitflow').exists())
         self.assertEqual({p.name: p.read_bytes() for p in legacy.iterdir()}, before)
-        self.cli('init', self.path, '--mode', 'local', '--apply')
+        self.cli('policy', self.path, '--operation', 'migrate', '--apply')
         state = self.path / '.gitflow/state'
         self.assertFalse(legacy.exists())
         for name in ('activation.json', 'origins.json'):
             self.assertEqual(json.loads((state / name).read_text()), json.loads(before[name]))
         self.assertEqual((state / 'legacy/main/user-note.txt').read_text(), 'preserve me')
         self.assertTrue((state / 'worktrees/main/journal.json').exists())
+        self.assertTrue((self.path / '.git/gitflow.xml').exists())
+        self.git('add', 'AGENTS.md'); self.git('commit', '-m', 'docs: guidance')
         self.assertEqual(self.git('status', '--porcelain'), '')
         self.cli('branch', self.path, '--operation', 'reconcile', '--apply')
 
@@ -76,7 +80,7 @@ class StorageLayoutTests(GitTestCase):
         state = self.path / '.gitflow/state'
         state.mkdir(parents=True)
         (state / 'origins.json').write_text('{"unexpected":{}}')
-        self.cli('init', self.path, '--mode', 'local', '--apply', code=3)
+        self.cli('policy', self.path, '--operation', 'migrate', '--apply', code=3)
         self.assertTrue((legacy / 'activation.json').exists())
         self.assertEqual((state / 'origins.json').read_text(), '{"unexpected":{}}')
 
@@ -87,11 +91,11 @@ class StorageLayoutTests(GitTestCase):
         from test_core import ROOT
         shutil.copytree(ROOT / 'scripts', runtime / 'scripts', ignore=shutil.ignore_patterns('__pycache__'))
         hook = self.path / '.git/hooks/commit-msg'
-        hook.write_text('#!/bin/sh\nexec python3 ' + shlex.quote(str(runtime / 'scripts/gitflow.py')) + ' native --kind commit-msg -- "$@"\n')
+        hook.write_text('#!/bin/sh\nexec ' + shlex.quote(sys.executable) + ' ' + shlex.quote(str(runtime / 'scripts/gitflow.py')) + ' native --kind commit-msg -- "$@"\n')
         hook.chmod(0o755)
-        self.cli('init', self.path, '--mode', 'local', '--apply')
+        self.cli('policy', self.path, '--operation', 'migrate', '--apply')
         expected_script = self.path / '.gitflow/state/native-runtime/scripts/gitflow.py'
-        self.assertEqual(hook.read_text(), '#!/bin/sh\nexec python3 ' +
+        self.assertEqual(hook.read_text(), '#!/bin/sh\nexec ' + shlex.quote(sys.executable) + ' ' +
                          shlex.quote(str(expected_script)) + ' native --kind commit-msg -- "$@"\n')
         import subprocess
         result = subprocess.run(['git', '-C', str(self.path), 'commit', '--allow-empty', '-m', 'fix: blocked'], env=self.env, capture_output=True, text=True, encoding='utf-8')
@@ -104,7 +108,7 @@ class StorageLayoutTests(GitTestCase):
         hook = self.path / '.git/hooks/commit-msg'
         hook.write_text('#!/bin/sh\n# custom\n' + str(legacy / 'native-runtime/scripts/gitflow.py'))
         before = hook.read_bytes()
-        self.cli('init', self.path, '--mode', 'local', '--apply', code=3)
+        self.cli('policy', self.path, '--operation', 'migrate', '--apply', code=3)
         self.assertEqual(hook.read_bytes(), before)
         self.assertTrue(legacy.exists())
 
@@ -117,6 +121,10 @@ class StorageLayoutTests(GitTestCase):
         old = admin / 'gitflow'
         old.mkdir()
         (old / 'journal.json').write_text('{"schema_version":"1.0.0","entries":[]}')
+        self.cli('gate', linked, '--action', 'commit', code=3)
+        self.assertTrue(old.exists())
+        self.cli('policy', self.path, '--operation', 'migrate', '--apply')
+        self.git('add', 'AGENTS.md'); self.git('commit', '-m', 'docs: guidance')
         self.cli('branch', linked, '--operation', 'create', '--name', 'feature/migrate', '--source', 'develop', '--apply')
         self.assertFalse(legacy.exists())
         self.assertFalse(old.exists())
@@ -138,8 +146,8 @@ class StorageLayoutTests(GitTestCase):
     def test_readonly_new_layout_does_not_change_state_or_config(self):
         self.repository()
         self.activate(mode='local')
-        files = [self.path / '.git/config', self.path / '.git/info/exclude', *[p for p in (self.path / '.gitflow').rglob('*') if p.is_file()]]
+        files = [self.path / '.git/config', self.path / '.git/info/exclude', self.path / '.git/gitflow.xml', self.path / 'AGENTS.md', *[p for p in (self.path / '.gitflow').rglob('*') if p.is_file()]]
         before = {p: (p.read_bytes(), p.stat().st_mtime_ns) for p in files}
         self.cli('gate', self.path, '--action', 'commit', code=1)
-        self.cli('init', self.path, '--mode', 'local')
+        self.cli('init', self.path, '--profile', 'classic-gitflow', '--mode', 'local')
         self.assertEqual({p: (p.read_bytes(), p.stat().st_mtime_ns) for p in files}, before)

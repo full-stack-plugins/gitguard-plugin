@@ -1,5 +1,7 @@
 # ci-governance Specification
 
+> **Authority update — XML native guard:** The current contract is [XML native governance](../../changes/xml-native-guard/specs/xml-native-guard/spec.md). Runtime policy is exclusively `<git-common-dir>/gitflow.xml`; legacy JSON and organization snapshots are explicit migration inputs, then flattened into XML. Public CI `check` remains unconfigured until separately trusted XML distribution exists. Conflicting JSON authority, implicit activation, baseline runtime lookup, and public CI enablement statements below describe the historical contract and are superseded.
+
 ## Purpose
 让业务仓库在 PR 和 CI 中验证真实提交范围、工作流合并方向及候选 squash 消息，绑定明确 Git 对象和受信规则来源，使远端复核与本地规则引擎保持一致而不执行 PR 中的代码。
 ## Requirements

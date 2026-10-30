@@ -2,6 +2,8 @@
 import json
 from pathlib import Path
 from test_core import GitTestCase
+from gitflow import xml_policy
+from xml.etree import ElementTree as ET
 
 class BoundaryTests(GitTestCase):
     def ready(self):
@@ -13,9 +15,9 @@ class BoundaryTests(GitTestCase):
 
     def test_complex_regex_is_rejected_before_it_can_block_hook(self):
         self.repository();self.activate()
-        file=self.path/'.gitflow/workflow.json';policy=json.loads(file.read_text())
+        file=self.path/'.git/gitflow.xml';policy=xml_policy.decode(file.read_bytes())
         policy['roles']['feature']['pattern']='feature/(a|aa)+'
-        file.write_text(json.dumps(policy))
+        file.write_bytes(ET.tostring(xml_policy._element('policy',policy)))
         self.cli('policy',self.path,'--apply',code=3)
 
     def test_shared_metadata_symlink_cannot_escape(self):
@@ -29,7 +31,7 @@ class BoundaryTests(GitTestCase):
         self.repository()
         directory=self.path/'.gitflow';directory.mkdir()
         outside=self.path.parent/'outside.md';outside.write_text('preserve')
-        (directory/'workflow.md').symlink_to(outside)
+        (self.path/'AGENTS.md').symlink_to(outside)
         self.cli('init',self.path,'--profile','classic-gitflow','--apply',code=3)
         self.assertEqual(outside.read_text(),'preserve')
 
@@ -81,9 +83,9 @@ class BoundaryTests(GitTestCase):
 
     def test_ambiguous_serial_repetitions_are_rejected(self):
         self.repository();self.activate()
-        file=self.path/'.gitflow/workflow.json';policy=json.loads(file.read_text())
+        file=self.path/'.git/gitflow.xml';policy=xml_policy.decode(file.read_bytes())
         policy['roles']['feature']['pattern']='feature/a*a*a*a*a*a*b'
-        file.write_text(json.dumps(policy))
+        file.write_bytes(ET.tostring(xml_policy._element('policy',policy)))
         self.cli('policy',self.path,'--apply',code=3)
 
     def test_same_name_tag_cannot_replace_real_release_branch(self):

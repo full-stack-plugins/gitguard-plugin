@@ -9,6 +9,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 CLI = ROOT / 'scripts/gitflow.py'
+sys.path.insert(0,str(ROOT/'scripts'))
 
 
 class GitTestCase(unittest.TestCase):
@@ -44,7 +45,11 @@ class GitTestCase(unittest.TestCase):
             self.fail('CLI 未返回完整 JSON: ' + p.stdout + p.stderr)
 
     def activate(self, profile='classic-gitflow', mode='shared'):
-        return self.cli('init', self.path, '--profile', profile, '--mode', mode, '--apply')
+        result=self.cli('init', self.path, '--profile', profile, '--mode', mode, '--apply')
+        # Initialization intentionally adds guidance; commit it in this disposable
+        # fixture so operation tests start from a clean working tree.
+        self.git('add','AGENTS.md');self.git('commit','-m','docs: GitGuard guidance')
+        return result
 
 
 class CoreTests(GitTestCase):
@@ -77,7 +82,7 @@ class CoreTests(GitTestCase):
     def test_no_git_apply_requires_explicit_initialization(self):
         self.cli('init', self.path, '--apply', code=3)
         self.assertFalse((self.path / '.git').exists())
-        r = self.cli('init', self.path, '--initialize-git', '--apply')
+        r = self.cli('init', self.path, '--profile','classic-gitflow','--initialize-git', '--apply')
         self.assertEqual(r['profile'], 'classic-gitflow')
         self.assertEqual(self.git('symbolic-ref', '--short', 'HEAD'), 'main')
         self.assertEqual(self.git('rev-list', '--all', '--count'), '0')
@@ -90,7 +95,7 @@ class CoreTests(GitTestCase):
     def test_init_is_idempotent_and_does_not_overwrite_policy(self):
         self.repository()
         self.activate()
-        policy = self.path / '.gitflow/workflow.json'
+        policy = self.path / '.git/gitflow.xml'
         content = policy.read_bytes()
         self.cli('init', self.path, '--profile', 'github-flow', '--apply', code=3)
         self.assertEqual(policy.read_bytes(), content)
@@ -129,29 +134,24 @@ class CoreTests(GitTestCase):
         self.assertEqual(r['decision'], 'allow')
         self.assertEqual(r['missing_required_roles'], [])
 
-    def test_policy_edit_cannot_immediately_relax_commit_guard(self):
-        self.repository()
-        self.activate()
-        p = self.path / '.gitflow/workflow.json'
-        policy = json.loads(p.read_text())
-        policy['roles']['main']['allow_commit'] = True
-        p.write_text(json.dumps(policy))
-        r = self.cli('gate', self.path, '--action', 'commit', code=3)
-        self.assertIn('policy_drift', [x['code'] for x in r['reasons']])
-        self.cli('policy', self.path, '--operation', 'activate')
-        self.cli('gate', self.path, '--action', 'commit', code=3)
-        self.cli('policy', self.path, '--operation', 'activate', '--apply')
-        self.cli('gate', self.path, '--action', 'commit')
+    def test_xml_is_the_only_runtime_authority(self):
+        self.repository();self.activate()
+        # A legacy JSON file cannot change the active XML rule.
+        folder=self.path/'.gitflow';folder.mkdir(exist_ok=True)
+        policy=json.loads((ROOT/'profiles/classic-gitflow.json').read_text())
+        policy['roles']['main']['allow_commit']=True
+        (folder/'workflow.json').write_text(json.dumps(policy))
+        self.cli('gate',self.path,'--action','commit',code=1)
+        from gitflow.xml_policy import write_policy
+        write_policy({'common_dir':str(self.path/'.git')},policy)
+        self.cli('gate',self.path,'--action','commit')
 
     def test_invalid_policy_field_is_rejected_without_activation(self):
-        self.repository()
-        self.activate()
-        p = self.path / '.gitflow/workflow.json'
-        value = json.loads(p.read_text())
-        value['roles']['main']['allow_commit'] = 'yes'
-        p.write_text(json.dumps(value))
-        self.cli('policy', self.path, '--operation', 'activate', '--apply', code=3)
-        self.cli('gate', self.path, '--action', 'commit', code=3)
+        self.repository();self.activate()
+        p=self.path/'.git/gitflow.xml'
+        p.write_bytes(p.read_bytes().replace(b'<allow_commit type="bool">false',b'<allow_commit type="bool">yes',1))
+        self.cli('policy',self.path,'--operation','activate','--apply',code=3)
+        self.cli('gate',self.path,'--action','commit',code=3)
 
     def test_linked_worktree_uses_shared_activation(self):
         self.repository()

@@ -12,8 +12,8 @@ class RuleCase(GitTestCase):
         folder = self.path / '.gitflow'
         folder.mkdir()
         (folder / 'workflow.json').write_text(json.dumps(policy))
-        self.cli('init', self.path, '--apply')
-        self.git('add', '.gitflow', 'app.txt')
+        self.cli('policy', self.path, '--operation','migrate','--apply')
+        self.git('add', '.gitflow', 'app.txt','AGENTS.md')
         self.git('commit', '-m', 'chore: configure')
         self.git('switch', '-c', 'feature/rules')
         return policy
@@ -43,11 +43,14 @@ class PolicyRuleTests(RuleCase):
 
     def test_invalid_configuration_cannot_be_silently_disabled(self):
         self.configured({'GF001': {'severity': 'error'}})
-        file = self.path / '.gitflow/workflow.json'
-        original = json.loads(file.read_text())
+        from gitflow.xml_policy import read_policy, _element
+        import xml.etree.ElementTree as ET
+        file=self.path/'.git/gitflow.xml'
+        original=read_policy({'common_dir':str(self.path/'.git')})
         for rules in ({'GF999': {'severity': 'off'}}, {'GF002': {'severity': 'error', 'options': {'max_length': True}}}, {'GF001': {'severity': 'error', 'options': {'unknown': 1}}}):
-            file.write_text(json.dumps({**original, 'rules': rules}))
-            self.cli('policy', self.path, '--apply', code=3)
+            # Serialize deliberately invalid XML without the production writer's validation.
+            file.write_bytes(ET.tostring(_element('policy',{**original,'rules':rules})))
+            self.cli('policy',self.path,'--apply',code=3)
 
     def test_author_signoff_and_ai_disclosure(self):
         self.configured({'GF101': {'severity': 'error', 'options': {'pattern': '^Tester$'}},

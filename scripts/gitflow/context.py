@@ -31,7 +31,7 @@ def context(path,choice=None,apply=False):
     try:
         policy,active=load(facts)
         role=next((k for k,r in policy['roles'].items() if r['name']==facts['branch']),None)
-        text=f"项目 {facts['root']}；分支 {facts['branch']}；工作流 {policy['profile']} 修订 {policy['revision']}；定义模式 {active['mode']}。提交和同步前运行 gate。"
+        text=f"项目 {facts['root']}；分支 {facts['branch']}；工作流 {policy['profile']} 修订 {policy['revision']}；定义模式 {active['mode']}。普通 Git 操作由已接线的 Agent 执行前检查与 Git 原生 hooks 守护；运行 doctor 核验接线。"
         if facts['git_state']=='unborn':text+='尚无初始提交；长期分支创建延后，初始提交需单独确认规范。'
         return report('context',context=text,facts=facts)
     except FlowError as exc:

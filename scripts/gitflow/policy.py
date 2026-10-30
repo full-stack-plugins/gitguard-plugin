@@ -1,4 +1,4 @@
-"""闭合项目规则与已激活快照；候选定义不得自动覆盖生效规则。"""
+"""XML 唯一规则源与显式旧配置迁移。"""
 import hashlib
 import json
 from pathlib import Path
@@ -109,27 +109,15 @@ def activation_path(facts):
 
 
 def load(facts):
-    path = activation_path(facts)
-    if not path.exists():
-        raise FlowError('policy_missing', '项目尚无已生效工作流；先接入或确认已有约定。')
-    active = read_json(path)
-    if not isinstance(active, dict) or set(active) != {'schema_version', 'mode', 'policy', 'sha256'} or active['schema_version'] != '1.0.0' or active['mode'] not in ('shared', 'local'):
-        raise FlowError('activation_invalid', '工作流激活记录损坏。')
-    policy = validate(active['policy'])
-    if digest(policy) != active['sha256']:
-        raise FlowError('activation_invalid', '工作流生效快照摘要不一致。')
-    if active['mode'] == 'shared':
-        candidate = safe_dir(facts['root'], '.gitflow') / 'workflow.json'
-        # 某些分支尚未提交共享定义，仍使用已生效约定；引用的组织文件仍需验证。
-        if not candidate.exists() and policy.get('extends'):
-            resolve(policy, facts['root'])
-        if candidate.exists() and digest(resolve(validate(read_json(candidate)), facts['root'])) != active['sha256']:
-            raise FlowError('policy_drift', '项目定义已变化但尚未激活；当前动作需先复核规则修订。')
-    return policy, active
+    from .xml_policy import read_policy
+    policy = read_policy(facts)
+    if policy.get('extends') is not None:
+        raise FlowError('xml_external_policy', '运行时 XML 必须自包含；请在显式迁移时展开组织规则。')
+    return policy, {'schema_version':'1.0.0', 'mode':'xml', 'policy':policy, 'sha256':digest(policy)}
 
 
 def explanation(policy):
-    lines = ['# 项目 Git 工作流', '', '此说明由 workflow.json 生成；JSON 是规则事实源。', '',
+    lines = ['# 项目 Git 工作流', '', '此说明读取 git-common-dir/gitflow.xml；XML 是唯一运行时规则源。', '',
              f"工作流：{policy['profile']}；修订：{policy['revision']}；权威远端：{policy['primary_remote']}", '',
              '| 角色 | 名称/模式 | 长期必需 | 允许提交 | 来源角色 | 合入角色 |', '|---|---|---|---|---|---|']
     for key, role in policy['roles'].items():
@@ -137,48 +125,61 @@ def explanation(policy):
     return '\n'.join(lines) + '\n'
 
 
-def write_activation(facts, policy, mode):
+def write_activation(facts, policy, mode=None):
+    """Compatibility API: writes only the single XML authority."""
+    from .xml_policy import write_policy
+    policy = validate(policy)
+    if policy.get('extends') is not None:
+        policy = resolve(policy, facts['root'])
+        policy['extends'] = None
     for role in policy['roles'].values():
-        if role['name'] and not valid_branch(facts['root'], role['name']):
-            raise FlowError('policy_branch_name_invalid', '规则含 Git 不接受的固定分支名称。')
-    active = {'schema_version': '1.0.0', 'mode': mode, 'policy': policy, 'sha256': digest(policy)}
-    atomic_json(state_file(facts, 'activation.json', reading=False), active)
-    return active
+        if role['name'] and not valid_branch(facts['root'],role['name']):
+            raise FlowError('policy_branch_name_invalid','规则含 Git 不接受的固定分支名称。')
+    write_policy(facts,policy)
+    return {'schema_version':'1.0.0','mode':'xml','policy':policy,'sha256':digest(policy)}
 
 
 def activate(path, apply=False):
-    facts = require_repo(path)
-    active_file = activation_path(facts)
-    old = read_json(active_file) if active_file.exists() else None
-    candidate = safe_dir(facts['root'], '.gitflow') / 'workflow.json'
+    """Legacy command validates XML; never imports JSON implicitly."""
+    facts=require_repo(path);policy,active=load(facts)
+    return report('policy.activate','allow',profile=policy['profile'],revision=policy['revision'],
+                  policy_sha256=active['sha256'],mode='xml',unchanged=True)
+
+
+def migrate(path, apply=False):
+    from .xml_policy import policy_path
+    from .initialization import guidance_snapshot, guidance_content, write_guidance
+    facts=require_repo(path)
+    if policy_path(facts).exists():raise FlowError('xml_already_exists','XML 已存在，拒绝旧规则覆盖。')
+    legacy=activation_path(facts)
+    candidate=safe_dir(facts['root'],'.gitflow/workflow.json')
+    policy=None
+    if legacy.exists():
+        old=read_json(legacy)
+        if not isinstance(old,dict) or set(old)!={'schema_version','mode','policy','sha256'} or old['schema_version']!='1.0.0' or old['mode'] not in ('shared','local'):
+            raise FlowError('activation_invalid','旧激活记录损坏。')
+        policy=validate(old['policy'])
+        if digest(policy)!=old['sha256']:raise FlowError('activation_invalid','旧快照摘要不一致。')
     if candidate.exists():
-        definition = validate(read_json(candidate))
-        policy = resolve(definition, facts['root'])
-        mode = 'shared'
-    elif old and old.get('mode') == 'local':
-        policy = validate(old['policy'])
-        mode = 'local'
-    else:
-        raise FlowError('policy_candidate_missing', '未找到候选 workflow.json。')
-    candidate_sha = digest(policy)
-    markdown = safe_dir(facts['root'], '.gitflow/workflow.md') if mode == 'shared' else None
-    if old and digest(policy) != old.get('sha256') and policy['revision'] <= old['policy']['revision']:
-        # 修订号码由激活动作明确递增，不让候选旧号码偷换身份。
-        policy['revision'] = old['policy']['revision'] + 1
-    result = report('policy.activate', 'applied' if apply else 'preview', profile=policy['profile'],
-                    revision=policy['revision'], policy_sha256=digest(policy))
+        defined=resolve(validate(read_json(candidate)),facts['root'])
+        if policy is not None and defined!=policy:raise FlowError('legacy_conflict','旧候选与快照不一致，不能猜测。')
+        policy=defined
+    if policy is None:raise FlowError('legacy_missing','没有可迁移的旧 JSON。')
+    policy=resolve(policy,facts['root'])
+    if 'extends' in policy:policy['extends']=None
+    agents=safe_dir(facts['root'],'AGENTS.md');before=guidance_snapshot(agents);content=guidance_content(before[1])
+    snapshots={p:p.read_bytes() for p in (legacy,candidate) if p.exists()}
     if apply:
         with locked(facts):
-            active_file = activation_path(facts)
-            current_old = read_json(active_file) if active_file.exists() else None
-            if current_old != old or (mode == 'shared' and digest(resolve(validate(read_json(candidate)), facts['root'])) != candidate_sha):
-                raise FlowError('policy_changed', '候选或激活身份已变化，请重新预览。')
-            if mode == 'shared':
-                definition['revision'] = policy['revision']
-                atomic_json(candidate, definition)
-                if not markdown.exists() or old and markdown.read_text(encoding='utf-8') == explanation(old['policy']):
-                    markdown.write_text(explanation(policy), encoding='utf-8')
-                else:
-                    result['markdown_preserved'] = True
-            write_activation(facts, policy, mode)
-    return result
+            def unchanged(p, raw):
+                if p == legacy and not p.exists():
+                    return read_json(activation_path(facts)) == json.loads(raw)
+                return p.exists() and p.read_bytes()==raw
+            if policy_path(facts).exists() or any(not unchanged(p,raw) for p,raw in snapshots.items()):
+                raise FlowError('policy_changed','迁移输入已变化。')
+            if guidance_snapshot(agents)!=before:raise FlowError('agents_changed','AGENTS.md 已变化。')
+            write_activation(facts,policy)
+            try:write_guidance(agents,before,content)
+            except (OSError,FlowError) as exc:raise FlowError('init_partial','XML 已写入，旧文件保留；重复 init 修复引导。') from exc
+    return report('policy.migrate','applied' if apply else 'preview',profile=policy['profile'],mode='xml',
+                  policy_sha256=digest(policy),legacy_preserved=True)

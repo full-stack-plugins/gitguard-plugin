@@ -11,13 +11,24 @@ class CIGovernanceTests(RuleCase):
     def prepare(self, extra=None):
         self.configured(extra or {'GF001': {'severity': 'error'}})
         self.base = self.git('rev-parse', 'HEAD')
+        from gitflow.xml_policy import read_policy
+        self.trusted_policy=read_policy({'common_dir':str(self.path/'.git')})
 
     def commit(self, message):
         self.git('commit', '--allow-empty', '-m', message)
         return self.git('rev-parse', 'HEAD')
 
     def run_check(self, head, *args, code=0, source='feature/rules', target='main'):
-        return self.cli('check', self.path, '--base', self.base, '--head', head, '--source', source, '--target', target, *args, code=code)
+        # Evaluate an explicitly supplied trusted test policy, not the disabled
+        # public CI trust integration. Public CLI fail-closed is tested separately.
+        from gitflow.ci import evaluate_range
+        from gitflow.git import FlowError, report, reason
+        options=dict(zip(args[::2],args[1::2]))
+        try:r=evaluate_range(str(self.path),self.base,head,source,target,self.trusted_policy,
+                             options.get('--message-mode','commits'),options.get('--message'))
+        except FlowError as exc:r=report('check',exc.decision,[reason(exc.code,exc.message)])
+        self.assertEqual({'allow':0,'deny':1,'unverified':3}[r['decision']],code,r)
+        return r
 
     def test_all_commits_checked_and_detached_checkout_is_readonly(self):
         self.prepare()
@@ -27,7 +38,8 @@ class CIGovernanceTests(RuleCase):
         before = self.git('show-ref')
         r = self.run_check(head, code=1)
         self.assertEqual(r['commit_count'], 2)
-        self.assertEqual(r['policy_ref'], self.base)
+        self.assertEqual(r['policy_source'], 'caller_supplied_no_distribution_attestation')
+        self.assertNotIn('policy_ref',r)
         self.assertIn(bad, [x['oid'] for x in r['commits'] if x['decision'] == 'deny'])
         self.assertEqual(self.git('show-ref'), before)
         self.assertEqual(self.git('status', '--porcelain'), '')
@@ -67,10 +79,10 @@ class CIGovernanceTests(RuleCase):
         r = self.run_check(head, code=1)
         self.assertTrue(any(x['rule_id'] == 'GF401' and x['status'] == 'fail' for x in r['tag_checks']))
 
-    def test_ci_requires_committed_base_policy_not_local_activation(self):
+    def test_ci_requires_trusted_distribution_not_local_activation(self):
         self.prepare()
-        self.base = self.git('rev-parse', 'HEAD^')
-        self.run_check(self.git('rev-parse', 'HEAD'), code=3)
+        r=self.cli('check',self.path,'--base',self.base,'--head',self.base,'--source','feature/rules','--target','main',code=3)
+        self.assertEqual(r['reasons'][0]['code'],'ci_policy_unconfigured')
 
     def test_action_event_runner_rejects_bad_pr_without_shell_execution(self):
         self.prepare()
@@ -81,7 +93,7 @@ class CIGovernanceTests(RuleCase):
         output = self.path.parent / 'report.json'
         summary = self.path.parent / 'summary.md'
         p = subprocess.run([sys.executable, str(ROOT/'scripts/ci_check.py'), '--repo', str(self.path), '--event', str(event_file), '--message-mode', 'squash', '--output', str(output), '--summary', str(summary)], env=self.env, capture_output=True, text=True)
-        self.assertEqual(p.returncode, 1, p.stdout+p.stderr)
+        self.assertEqual(p.returncode, 3, p.stdout+p.stderr)
         self.assertFalse(marker.exists())
-        self.assertEqual(json.loads(output.read_text())['decision'], 'deny')
+        self.assertEqual(json.loads(output.read_text())['decision'], 'unverified')
         self.assertNotIn('<script>', summary.read_text())

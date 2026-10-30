@@ -6,8 +6,8 @@ import shlex
 import shutil
 import sys
 from .context import context
-from .git import FlowError, discover, is_git_project, oid, reason, report, require_repo, text
-from .operations import ancestor, branch, sync
+from .git import FlowError, is_git_project, reason, report, require_repo, text, run
+from .operations import sync
 from .policy import load, role_for
 from .service import gate, metadata_checks
 from . import rules
@@ -15,6 +15,11 @@ from .layout import state_dir, state_file
 from .storage import locked, read_json, safe_dir
 
 READ={'status','diff','log','show','rev-parse','rev-list','for-each-ref','ls-files','ls-remote','merge-base','check-ref-format','remote','worktree','config','tag','branch'}
+
+
+def original_oid(path, ref='HEAD'):
+    result=run(path,'--no-replace-objects','rev-parse','--verify',ref+'^{commit}',check=False)
+    return result.stdout.decode().strip() if result.returncode==0 else None
 
 
 def decision(value,message):
@@ -61,7 +66,21 @@ def inspect_git(path,args):
         return gate(path,'commit',message='\n\n'.join(messages) if messages else None)
     if verb in ('merge','rebase'):
         if len(rest)!=1 or rest[0].startswith('-'):raise FlowError('command_unknown','集成命令需唯一明确本地分支；恢复请使用 recovery。')
-        result=sync(path,verb,source=rest[0] if verb=='merge' else None,target=rest[0] if verb=='rebase' else None)
+        if verb=='merge':
+            facts=require_repo(path)
+            source=rest[0]
+            if not source.startswith('refs/heads/') and original_oid(path,'refs/tags/'+source):
+                raise FlowError('branch_identity_ambiguous','同名标签与分支不明确，请使用 refs/heads/。')
+            if source.startswith('refs/heads/'):
+                source=source[11:]
+            declared='refs/heads/'+source
+            resolved=run(path,'rev-parse','--symbolic-full-name','--verify',rest[0],check=False)
+            actual=original_oid(path,rest[0])
+            if (resolved.returncode or resolved.stderr or resolved.stdout.decode().strip()!=declared
+                    or actual is None or actual!=original_oid(path,declared)):
+                raise FlowError('branch_identity_ambiguous','Git merge 参数未唯一解析为声明的本地源分支。')
+            return gate(path,'merge',source=source,target=facts['branch'])
+        result=sync(path,verb,target=rest[0])
         raise FlowError('native_semantics_unverified','原生 merge/rebase 的目标与配置未绑定插件 argv；使用 sync。')
     if verb in ('push','pull','fetch'):
         if verb=='fetch' and len(rest)==1:
@@ -123,7 +142,7 @@ def pretool(payload):
             managed=True
             if mutation_seen:raise FlowError('command_future_state','链中先前变更会改变后续 Git 身份，请拆分操作。')
             result=inspect_git(target,args)
-            if result and result['decision']=='deny':return decision('deny',result['reasons'][0]['message'])
+            if result and result['decision']!='allow':return decision('deny' if result['decision']=='deny' else 'ask',result['reasons'][0]['message'])
             mutation_seen=bool(result and (result['action'].startswith(('gate.','sync.'))))
         return decision('allow','已按当前项目分支规范检查；此结果不包含代码质量或用户写操作授权。') if managed else {}
     except (FlowError,ValueError) as exc:
@@ -155,9 +174,9 @@ def hook_main(event):
 
 def install_native(path,apply=False):
     facts=require_repo(path);load(facts)
-    if text(path,'config','--get','core.hooksPath',check=False):raise FlowError('hooks_path_existing','已有 core.hooksPath，需由现有 Hook 管理器集成，不能改写。')
+    if run(path,'config','--get','core.hooksPath',check=False).returncode==0:raise FlowError('hooks_path_existing','已有 core.hooksPath，需由现有 Hook 管理器集成，不能改写。')
     hooks=safe_dir(facts['common_dir'],'hooks')
-    if any((hooks/name).exists() for name in ('commit-msg','pre-push')):
+    if any((hooks/name).exists() or (hooks/name).is_symlink() for name in ('commit-msg','pre-push')):
         raise FlowError('hooks_existing','已有 Hook，保留原文件；请审查后在现有管理器内调用 native 入口。')
     result=report('hooks.install','applied' if apply else 'preview',hooks=['commit-msg','pre-push'])
     if apply:
@@ -170,7 +189,7 @@ def install_native(path,apply=False):
             hooks.mkdir(exist_ok=True)
             for kind in ('commit-msg','pre-push'):
                 file=hooks/kind
-                content='#!/bin/sh\nexec python3 '+shlex.quote(str(runtime/'scripts/gitflow.py'))+' native --kind '+kind+' -- "$@"\n'
+                content='#!/bin/sh\nexec '+shlex.quote(sys.executable)+' '+shlex.quote(str(runtime/'scripts/gitflow.py'))+' native --kind '+kind+' -- "$@"\n'
                 with file.open('x') as stream:stream.write(content)
                 file.chmod(0o755)
     return result
@@ -197,7 +216,7 @@ def managed_integration(facts):
         source = step.get('source_branch')
         target = facts['branch']
         sr, tr = role_for(policy, source), role_for(policy, target)
-        if heads != [step.get('source_oid')] or oid(facts['root'], 'ORIG_HEAD') != step['before']['head']:
+        if heads != [step.get('source_oid')] or original_oid(facts['root'], 'ORIG_HEAD') != step['before']['head']:
             raise FlowError('integration_identity_changed', '真实合并父提交与日志不同。')
         planned_targets=[c[1] for c in entry.get('commands',[]) if isinstance(c,list) and len(c)==2 and c[0]=='switch']
         integration_action=step.get('integration_action',entry['action'])
@@ -208,7 +227,7 @@ def managed_integration(facts):
             raise FlowError('integration_direction_denied', '合并提交方向不符合项目规则。')
         return report('native.integration')
     if 'CHERRY_PICK_HEAD' in facts['operation_states'] and args and args[0] == 'cherry-pick':
-        if oid(facts['root'], 'CHERRY_PICK_HEAD') != (step.get('source_oid') if args[-1] == '--continue' else args[-1]):
+        if original_oid(facts['root'], 'CHERRY_PICK_HEAD') != (step.get('source_oid') if args[-1] == '--continue' else args[-1]):
             raise FlowError('integration_identity_changed', 'cherry-pick 源 OID 与日志不同。')
         target_role = role_for(policy, facts['branch'])
         source_role = role_for(policy, step.get('integration_source', entry['before'].get('branch')))
@@ -222,6 +241,58 @@ def managed_integration(facts):
     raise FlowError('integration_unbound', '中断提交未绑定明确集成步骤。')
 
 
+def integration(facts):
+    """Keep journal-bound exceptions; otherwise prove a single native merge source."""
+    journal_file = state_file(facts, 'journal.json')
+    if journal_file.exists():
+        journal = read_json(journal_file)
+        entries = journal.get('entries', [])
+        if not isinstance(entries,list) or any(not isinstance(entry,dict) for entry in entries):
+            raise FlowError('integration_unverified','Managed integration journal is malformed.')
+        if entries and entries[-1].get('status') == 'running':
+            return managed_integration(facts)
+        if entries and entries[-1].get('status') != 'complete':
+            raise FlowError('integration_unverified','Managed integration requires explicit recovery.')
+    if facts['operation_states'] != ['MERGE_HEAD']:
+        raise FlowError('integration_unverified', 'Only a single native merge can be verified without a managed journal.')
+    heads = Path(facts['git_dir'], 'MERGE_HEAD').read_text().splitlines()
+    if len(heads) != 1 or not re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', heads[0]):
+        raise FlowError('integration_unverified', 'Native merge source is not a single commit.')
+    rows = text(facts['root'], 'for-each-ref', '--format=%(refname) %(objectname)', 'refs/heads').splitlines()
+    sources = [row.split()[0][11:] for row in rows if len(row.split()) == 2 and row.split()[1] == heads[0]]
+    if len(sources) != 1 or not facts['branch']:
+        raise FlowError('integration_unverified', 'Native merge source branch is ambiguous or missing.')
+    policy, _ = load(facts)
+    sr, tr = role_for(policy, sources[0]), role_for(policy, facts['branch'])
+    if not sr or not tr or tr not in policy['roles'][sr]['merge_into']:
+        raise FlowError('integration_direction_denied', 'Native merge direction violates policy.', 'deny')
+    return report('native.integration')
+
+
+def push_metadata(facts, policy, local_oid, remote_oid):
+    """Inspect every pending commit, using only locally available immutable objects."""
+    if facts['shallow']:
+        raise FlowError('push_history_unverified', 'Shallow history cannot prove the full pending range.')
+    revision = local_oid if set(remote_oid) == {'0'} else remote_oid + '..' + local_oid
+    commits = text(facts['root'], '--no-replace-objects', 'rev-list', '--max-count=257', revision).splitlines()
+    if len(commits) > 256:
+        raise FlowError('push_budget', 'Pending commit range exceeds 256 commits.')
+    checks, reasons = [], []
+    for commit in commits:
+        raw = run(facts['root'], '--no-replace-objects', 'show', '-s', '--format=%an%x00%ae%x00%B', commit).stdout.decode('utf-8')
+        name, email, message = raw.split('\0', 2)
+        message = message.rstrip('\n')
+        if len(message) > 4096 or len(name) > 4096 or len(email) > 4096:
+            raise FlowError('push_metadata_budget', 'Commit metadata exceeds inspection budget.')
+        pattern = policy['commit_message_pattern']
+        if pattern and not re.fullmatch(pattern, message):
+            reasons.append(reason('commit_message_invalid', 'Pending commit message violates policy.', commit=commit))
+        checks.extend(rules.evaluate(policy, {'message': message, 'author_name': name, 'author_email': email}))
+    reasons.extend(rules.reasons(checks))
+    verdict = 'unverified' if rules.decision(checks) == 'unverified' else ('deny' if reasons else 'allow')
+    return report('native.push', verdict, reasons, checks=checks)
+
+
 def native_main(kind,args):
     try:
         if kind=='commit-msg':
@@ -231,10 +302,15 @@ def native_main(kind,args):
             facts=require_repo('.')
             message = file.read_text().strip()
             if facts['operation_states']:
-                r = managed_integration(facts)
+                r = integration(facts)
                 policy, active = load(facts)
                 checks = metadata_checks(facts, policy, message)
-                r = report('native.integration', rules.decision(checks), rules.reasons(checks), checks=checks, policy_sha256=active['sha256'])
+                reasons = rules.reasons(checks)
+                pattern = policy['commit_message_pattern']
+                if pattern and not re.fullmatch(pattern, message):
+                    reasons.append(reason('commit_message_invalid', 'Integration commit message violates policy.'))
+                verdict = 'unverified' if rules.decision(checks) == 'unverified' else ('deny' if reasons else 'allow')
+                r = report('native.integration', verdict, reasons, checks=checks, policy_sha256=active['sha256'])
             else:
                 r = gate('.', 'commit', message=message)
             for item in r.get('checks', []):
@@ -251,14 +327,20 @@ def native_main(kind,args):
             parts=lines[0].split()
             if len(parts)!=4 or not parts[0].startswith('refs/heads/') or not parts[2].startswith('refs/heads/') or set(parts[1])=={'0'}:
                 raise FlowError('push_ref_invalid','不支持标签、删除或非分支来源。')
+            if any(not re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', value) for value in (parts[1],parts[3])) or len(parts[1])!=len(parts[3]):
+                raise FlowError('push_oid_invalid','Push OIDs must be full, matching object identifiers.')
             source,target=parts[0][11:],parts[2][11:]
-            if oid('.',parts[0]) != parts[1]:raise FlowError('push_identity_changed','推送源提交与实际引用不一致。')
+            if original_oid('.',parts[0]) != parts[1]:raise FlowError('push_identity_changed','推送源提交与实际引用不一致。')
             if set(parts[3]) != {'0'}:
-                if oid('.',parts[3]) != parts[3]:raise FlowError('remote_history_unknown','远端提交对象不可核验，不能放行非快进未知历史。')
-                if not ancestor('.',parts[3],parts[1]):raise FlowError('non_fast_forward_denied','拒绝会重写远端分支历史的推送。','deny')
+                if original_oid('.',parts[3]) != parts[3]:raise FlowError('remote_history_unknown','远端提交对象不可核验，不能放行非快进未知历史。')
+                ancestry=run('.', '--no-replace-objects', 'merge-base', '--is-ancestor', parts[3], parts[1], check=False)
+                if ancestry.returncode==1:raise FlowError('non_fast_forward_denied','拒绝会重写远端分支历史的推送。','deny')
+                if ancestry.returncode:raise FlowError('remote_history_unknown','Original-object ancestry could not be verified.')
             r=gate('.','push',source=source,target=target)
+            if r['decision']=='allow':
+                r=push_metadata(facts,policy,parts[1],parts[3])
         else:raise FlowError('native_kind_unknown','未知 native Hook。')
-        if r['decision']!='allow':print('GitFlow: '+r['reasons'][0]['message'],file=sys.stderr);return 1
+        if r['decision']!='allow':print('GitFlow '+r['decision']+': '+r['reasons'][0]['message'],file=sys.stderr);return 1
         return 0
     except (FlowError,OSError,ValueError,KeyError,TypeError,AttributeError) as exc:
-        print('GitFlow 未验证：'+str(exc),file=sys.stderr);return 1
+        print('GitFlow '+(exc.decision if isinstance(exc,FlowError) else 'unverified')+': '+str(exc),file=sys.stderr);return 1

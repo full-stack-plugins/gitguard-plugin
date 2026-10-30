@@ -63,7 +63,7 @@ def state_file(facts, name, reading=True):
 
 
 def wrapper(runtime, kind):
-    return '#!/bin/sh\nexec python3 ' + shlex.quote(str(runtime / 'scripts/gitflow.py')) + ' native --kind ' + kind + ' -- "$@"\n'
+    return '#!/bin/sh\nexec ' + shlex.quote(sys.executable) + ' ' + shlex.quote(str(runtime / 'scripts/gitflow.py')) + ' native --kind ' + kind + ' -- "$@"\n'
 
 
 def migration_plan(facts, directory):
@@ -111,7 +111,8 @@ def migration_plan(facts, directory):
             if _redirected(hook):
                 raise FlowError('hooks_existing', '原生 Hook 是链接，不能自动迁移。')
             if hook.exists():
-                if hook.read_text() != wrapper(old_runtime, kind):
+                legacy_wrapper='#!/bin/sh\nexec python3 ' + shlex.quote(str(old_runtime / 'scripts/gitflow.py')) + ' native --kind ' + kind + ' -- \"$@\"\n'
+                if hook.read_text() not in (wrapper(old_runtime, kind),legacy_wrapper):
                     raise FlowError('hooks_existing', '旧原生 Hook 已被编辑；保留文件，需先由现有管理器迁移。')
                 hooks.append((hook, kind))
     return moves, copies, hooks

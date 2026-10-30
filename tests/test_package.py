@@ -38,7 +38,8 @@ class PackageTests(unittest.TestCase):
             p=subprocess.run([sys.executable,str(packed/'scripts/gitflow.py'),'hook','--event','SessionStart'],
                              cwd=packed,input=json.dumps({'cwd':str(temp)}),text=True,capture_output=True)
             self.assertEqual(p.returncode,0,p.stderr)
-            self.assertIn('已生效工作流',json.loads(p.stdout)['hookSpecificOutput']['additionalContext'])
+            self.assertIn('No native XML policy is initialized',json.loads(p.stdout)['hookSpecificOutput']['additionalContext'])
+            self.assertFalse((temp/'.git/gitflow.xml').exists())
 
     def test_snapshot_tamper_is_detected(self):
         with tempfile.TemporaryDirectory() as folder:

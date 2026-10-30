@@ -9,55 +9,8 @@ from .organization import resolve
 
 
 def initialize(path, profile=None, mode='shared', apply=False, initialize_git=False):
-    if mode not in ('shared', 'local'):
-        raise FlowError('mode_invalid', '规则模式只能是 shared 或 local。')
-    facts = discover(path)
-    absent = facts['git_state'] == 'absent'
-    if absent and apply and not initialize_git:
-        raise FlowError('git_initialization_required', '请确认 Git 初始化；单独 apply 不代表此授权。')
-    if not absent and activation_path(facts).exists():
-        policy, active = load(facts)
-        if (profile and profile != policy['profile']) or mode != active['mode']:
-            raise FlowError('policy_already_exists', '已有规范不能由 init 替换，请提出候选修订并 activate。')
-        if apply:
-            with locked(facts):
-                load(facts)
-        return report('init', 'applied' if apply else 'allow', profile=policy['profile'], unchanged=True)
-    candidate = safe_dir(facts['root'], '.gitflow') / 'workflow.json'
-    if candidate.exists():
-        policy = validate(read_json(candidate))
-        if profile and profile != policy['profile']:
-            raise FlowError('policy_already_exists', '已有项目定义与指定模板不同，拒绝覆盖。')
-    else:
-        if not profile and facts['git_state'] == 'repository':
-            raise FlowError('profile_selection_required', '已有历史需先解释原约定，显式选择工作流。')
-        policy = template(profile or 'classic-gitflow')
-    definition = policy
-    policy = resolve(definition, facts['root'])
-    result = report('init', 'applied' if apply else 'preview', profile=policy['profile'], mode=mode,
-                    initialize_git=absent, branch_creation='deferred_until_initial_commit')
-    result['missing_required_roles'] = [k for k,r in policy['roles'].items() if r['required'] and r['name'] not in facts.get('branches',[])]
-    result['next_actions'] = [{'action':'audit','message':'接入后核验已有分支；临时分支无需预创建。'}]
-    if result['missing_required_roles']:
-        result['next_actions'].append({'action':'branch.reconcile','message':'初始提交存在后，显式确认补齐缺失长期分支。'})
-    if mode == 'shared':
-        markdown = safe_dir(facts['root'], '.gitflow/workflow.md')
-    if not apply:
-        return result
-    if absent:
-        run(path, 'init', '-b', 'main')
-        facts = require_repo(path)
-    with locked(facts):
-        if mode == 'shared':
-            if candidate.exists() and digest(resolve(validate(read_json(candidate)), facts['root'])) != digest(policy):
-                raise FlowError('policy_changed', '候选规则已变化，请重新预览。')
-            atomic_json(candidate, definition)
-            if not markdown.exists():
-                markdown.write_text(explanation(policy), encoding='utf-8')
-            else:
-                result['markdown_preserved'] = True
-        write_activation(facts, policy, mode)
-    return result
+    from .initialization import initialize as initialize_xml
+    return initialize_xml(path, profile, mode, apply, initialize_git)
 
 
 def metadata_checks(facts, policy, message):

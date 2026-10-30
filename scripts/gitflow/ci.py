@@ -1,7 +1,6 @@
-"""受信 base 策略下的只读 PR/提交范围检查。"""
+"""可信 XML 分发尚未配置；保留显式策略输入的只读范围计算内核。"""
 import re
 from .git import FlowError, oid, reason, report, require_repo, run, text, valid_branch
-from .organization import LIMIT, document, resolve
 from .policy import digest, role_for, validate
 from . import rules
 
@@ -12,21 +11,6 @@ def commit_oid(path, value):
     return value
 
 
-def blob(path, ref, name):
-    """仅读取指定提交中普通文件，不跟随链接或工作树内容。"""
-    entries = run(path, 'ls-tree', '-z', ref, '--', name).stdout.split(b'\0')
-    entries = [e for e in entries if e]
-    if len(entries) != 1:
-        raise FlowError('ci_policy_missing', '受信 base 中缺少规则或组织文件。')
-    meta, filename = entries[0].split(b'\t', 1)
-    mode, kind, object_id = meta.decode().split()
-    if filename.decode() != name or mode not in ('100644', '100755') or kind != 'blob':
-        raise FlowError('ci_policy_invalid', '受信规则必须是普通文件。')
-    if int(text(path, 'cat-file', '-s', object_id)) > LIMIT:
-        raise FlowError('ci_policy_invalid', '受信规则超过读取预算。')
-    return run(path, 'cat-file', 'blob', object_id).stdout
-
-
 def aggregate(values):
     if 'unverified' in values:
         return 'unverified'
@@ -34,6 +18,17 @@ def aggregate(values):
 
 
 def check(path, base, head, source, target, message_mode='commits', message=None):
+    # No trusted XML distribution channel has been configured for CI. Neither
+    # PR workspace XML nor legacy JSON may approve the PR that supplied it.
+    raise FlowError('ci_policy_unconfigured', 'CI 尚未配置可信 XML 分发；不能使用 PR 自带规则或旧 JSON 放行。')
+
+
+def evaluate_range(path, base, head, source, target, policy, message_mode='commits', message=None):
+    """Pure evaluation kernel; caller must already possess trusted policy.
+
+    The public CI/CLI does not expose this until trusted XML provisioning exists.
+    Native checks and tests may reuse the bounded object evaluation algorithm.
+    """
     facts = require_repo(path)
     if facts['shallow']:
         raise FlowError('ci_history_incomplete', '浅克隆不能证明完整 PR 范围，先由 CI 明确获取历史。')
@@ -49,7 +44,9 @@ def check(path, base, head, source, target, message_mode='commits', message=None
     commits = text(path, 'rev-list', '--reverse', '--max-count=501', base + '..' + head).splitlines()
     if len(commits) > 500:
         raise FlowError('ci_range_limit', '提交范围超过 500 条预算，不能部分检查后报告通过。')
-    policy = resolve(validate(document(blob(path, base, '.gitflow/workflow.json'))), reader=lambda name: blob(path, base, name))
+    policy = validate(policy)
+    if policy.get('extends') is not None:
+        raise FlowError('ci_policy_unconfigured','范围检查需要自包含的可信 XML 规则。')
     for role in policy['roles'].values():
         if role['name'] and not valid_branch(path, role['name']):
             raise FlowError('policy_branch_name_invalid', '规则含无效固定分支名。')
@@ -85,6 +82,6 @@ def check(path, base, head, source, target, message_mode='commits', message=None
     tag_checks = rules.evaluate(policy, {'tags': tags}, ('tag',))
     verdict = aggregate([r['decision'] for r in records] + [rules.decision(tag_checks), rules.decision(squash_checks), 'deny' if violations or squash_reasons else 'allow'])
     return report('check', verdict, violations + squash_reasons + rules.reasons(tag_checks), base=base, head=head,
-                  source=source, target=target, policy_ref=base, policy_sha256=digest(policy), revision=policy['revision'],
+                  source=source, target=target, policy_source='caller_supplied_no_distribution_attestation', policy_sha256=digest(policy), revision=policy['revision'],
                   commit_count=len(records), commits=records, message_mode=message_mode, squash_checks=squash_checks,
                   tag_checks=tag_checks, branch_origin='not_inferred', server_protection='unverified')

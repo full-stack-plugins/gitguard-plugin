@@ -79,6 +79,9 @@ def dispatch(a):
             result['decision'] = 'unverified'
         return result
     if a.command == 'policy':
+        if a.operation == 'migrate':
+            from .policy import migrate
+            return migrate(a.path,a.apply)
         if a.operation == 'describe':
             from .diagnostics import describe
             return describe(a.path)
@@ -123,6 +126,16 @@ def main(argv=None):
         return hook_main(h.event) if h.command == 'hook' else native_main(h.kind, h.arguments)
     a = parser().parse_args(argv)
     try:
+        if a.command=='init' and not a.profile and sys.stdin.isatty() and not a.json:
+            from .policy import ASSETS
+            from .xml_policy import policy_path
+            facts=discover(a.path)
+            if facts['git_state']=='absent' or not policy_path(facts).exists():
+                choices=sorted(p.stem for p in ASSETS.glob('*.json'))
+                print('Select GitFlow profile: '+', '.join(choices), file=sys.stderr)
+                try: a.profile=input('Profile: ').strip()
+                except (EOFError,KeyboardInterrupt) as exc:
+                    raise FlowError('profile_selection_cancelled','未完成工作流选择；未写入。') from exc
         result = dispatch(a)
     except FlowError as exc:
         result = report(a.command, exc.decision, [reason(exc.code, exc.message)])

@@ -6,6 +6,8 @@ import sys
 import test_ci_governance as ci_tests
 from test_policy_rules import RuleCase
 from test_core import ROOT
+from gitflow import xml_policy
+from xml.etree import ElementTree as ET
 
 
 class GovernanceBoundaries(RuleCase):
@@ -19,10 +21,10 @@ class GovernanceBoundaries(RuleCase):
 
     def test_invalid_nullable_and_unknown_rule_options(self):
         self.configured({})
-        file = self.path / '.gitflow/workflow.json'
-        original = json.loads(file.read_text())
+        file = self.path / '.git/gitflow.xml'
+        original = xml_policy.decode(file.read_bytes())
         for config in (None, {'GF001': {'severity': []}}, {'GF104': {'severity': 'error', 'options': {'mode': None}}}, {'GF102': {'severity': 'off', 'options': {'pattern': None}}}):
-            file.write_text(json.dumps({**original, 'rules': config}))
+            file.write_bytes(ET.tostring(xml_policy._element('policy',{**original, 'rules': config})))
             self.cli('policy', self.path, '--apply', code=3)
 
     def test_symlink_baseline_and_duplicate_json_fail_closed(self):
@@ -40,7 +42,8 @@ class GovernanceBoundaries(RuleCase):
         value = json.loads(file.read_text())
         value['extends'] = {'path': '.gitflow/baselines/team.json', 'sha256': hashlib.sha256(source.read_bytes()).hexdigest()}
         file.write_text(json.dumps(value))
-        self.cli('policy', self.path, '--apply', code=3)
+        (self.path / '.git/gitflow.xml').unlink()
+        self.cli('policy', self.path, '--operation', 'migrate', '--apply', code=3)
 
     def test_native_managed_integration_checks_v2_metadata(self):
         self.configured({'GF001': {'severity': 'error', 'options': {'allow_merge': False}}}, profile='classic-gitflow')
@@ -90,7 +93,7 @@ class CIBoundaries(RuleCase):
         r = self.run_check(head, code=3)
         self.assertEqual(r['reasons'][0]['code'], 'ci_range_limit')
 
-    def test_organization_is_read_from_base_blob(self):
+    def test_trusted_flattened_rules_cannot_be_weakened_by_candidate_json(self):
         self.prepare({})
         folder = self.path / '.gitflow/baselines';folder.mkdir()
         raw = json.dumps({'schema_version': '1.0.0', 'rules': {'GF001': {'severity': 'error'}}, 'locked_rules': ['GF001']}).encode()
@@ -102,6 +105,8 @@ class CIBoundaries(RuleCase):
         self.base = self.commit('chore: baseline')
         baseline.write_text('{}');value['extends'] = None;file.write_text(json.dumps(value))
         self.git('add', '.gitflow')
+        self.trusted_policy['rules']={'GF001':{'severity':'error'}}
+        self.trusted_policy['extends']=None
         self.run_check(self.commit('bad candidate'), code=1)
 
     def test_event_runner_success_and_malformed_event(self):
@@ -112,8 +117,8 @@ class CIBoundaries(RuleCase):
         command = [sys.executable, str(ROOT / 'scripts/ci_check.py'), '--repo', str(self.path), '--event', str(event), '--output', str(report), '--summary', str(summary)]
         event.write_text(json.dumps({'pull_request': {'base': {'sha': self.base, 'ref': 'main'}, 'head': {'sha': head, 'ref': 'feature/rules'}, 'title': 'feat: candidate', 'body': None}}))
         p = subprocess.run(command, env=self.env, capture_output=True, text=True)
-        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-        self.assertEqual(json.loads(report.read_text())['decision'], 'allow')
+        self.assertEqual(p.returncode, 3, p.stdout + p.stderr)
+        self.assertEqual(json.loads(report.read_text())['decision'], 'unverified')
         event.write_text('{}')
         p = subprocess.run(command, env=self.env, capture_output=True, text=True)
         self.assertEqual(p.returncode, 3)
