@@ -21,7 +21,7 @@ class XmlNativeHookTests(GitTestCase):
 
     def native(self, *args):
         return subprocess.run(['git', '-C', str(self.path), *args], env=self.env,
-                              text=True, capture_output=True, timeout=30)
+                              text=True, encoding="utf-8", capture_output=True, timeout=30)
 
     def install(self):
         self.cli('hooks', self.path, '--apply')
@@ -99,7 +99,7 @@ class XmlNativeHookTests(GitTestCase):
     def push_input(self, line):
         from test_core import CLI
         return subprocess.run([sys.executable,str(CLI),'native','--kind','pre-push','--','origin','unused'],
-                              cwd=self.path, env=self.env, input=line+'\n', text=True,
+                              cwd=self.path, env=self.env, input=line+'\n', text=True, encoding='utf-8',
                               capture_output=True, timeout=30)
 
     def test_push_ref_oid_unknown_history_and_non_ff_fail_closed(self):

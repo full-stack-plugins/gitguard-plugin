@@ -1,10 +1,26 @@
 """Read-only native wiring diagnostics use disposable installations."""
 import os
+import io
+from contextlib import contextmanager
+from unittest.mock import patch
 import sys
 import unittest
 from test_core import GitTestCase, ROOT
 sys.path.insert(0,str(ROOT/'scripts'))
 from gitflow.diagnostics import doctor, describe
+
+
+@contextmanager
+def cp1252_default_text_files():
+    """Use real file I/O with Windows' legacy default, retaining explicit codecs."""
+    original = io.open
+    def open_file(file, mode='r', buffering=-1, encoding=None, errors=None,
+                  newline=None, closefd=True, opener=None):
+        if 'b' not in mode and encoding in (None, 'locale'):
+            encoding = 'cp1252'
+        return original(file, mode, buffering, encoding, errors, newline, closefd, opener)
+    with patch('io.open', new=open_file):
+        yield
 
 
 class XmlDiagnosticsTests(GitTestCase):
@@ -30,7 +46,8 @@ class XmlDiagnosticsTests(GitTestCase):
     def test_same_version_runtime_edits_are_not_configured(self):
         self.ready()
         file=self.runtime/'scripts/gitflow/hooks.py'
-        file.write_text(file.read_text()+'\n# old semantics\n')
+        with cp1252_default_text_files():
+            file.write_text(file.read_text(encoding='utf-8')+'\n# old semantics\n', encoding='utf-8')
         self.assertEqual(self.hooks()['status'],'outdated')
 
     def test_missing_xml_policy_is_not_configured(self):
@@ -60,3 +77,10 @@ class XmlDiagnosticsTests(GitTestCase):
         (self.runtime/'scripts/oversized.py').write_bytes(b'x'*(256*1024+1))
         self.assertEqual(self.hooks()['runtime_status'],'unverified')
         self.assertNotEqual(self.hooks()['status'],'configured')
+
+
+class PackageTextEncodingTests(unittest.TestCase):
+    def test_validator_reads_real_package_with_cp1252_default(self):
+        from validate_package import validate_package
+        with cp1252_default_text_files():
+            self.assertEqual(validate_package(), [])

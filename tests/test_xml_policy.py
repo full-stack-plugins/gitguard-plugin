@@ -127,6 +127,52 @@ class XMLPolicyTests(unittest.TestCase):
             xml.write_policy(facts, self.policy())
             self.assertFalse(list(Path(temp).glob('.gitflow-write-*')))
 
+    def test_windows_path_creation_time_and_handle_change_time(self):
+        # Reproduce CPython 3.12 Windows semantics while reading a real file.
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as temp:
+            facts = {'common_dir': temp}
+            xml.write_policy(facts, self.policy())
+            original = os.fstat
+            def handle_stat(fd):
+                info = original(fd)
+                values = {name: getattr(info, name) for name in dir(info) if name.startswith('st_')}
+                values['st_ctime_ns'] += 1000
+                return SimpleNamespace(**values)
+            with mock.patch('sys.platform', 'win32'), mock.patch.object(xml.os, 'fstat', side_effect=handle_stat):
+                self.assertEqual(xml.read_policy(facts), self.policy())
+
+    def test_windows_handle_change_time_mutation_still_rejected(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as temp:
+            facts = {'common_dir': temp}
+            xml.write_policy(facts, self.policy())
+            original = os.fstat
+            calls = 0
+            def handle_stat(fd):
+                nonlocal calls
+                calls += 1
+                info = original(fd)
+                values = {name: getattr(info, name) for name in dir(info) if name.startswith('st_')}
+                values['st_ctime_ns'] += calls * 1000
+                return SimpleNamespace(**values)
+            with mock.patch('sys.platform', 'win32'), mock.patch.object(xml.os, 'fstat', side_effect=handle_stat):
+                with self.assertRaises(FlowError): xml.read_policy(facts)
+
+    def test_windows_cross_identity_and_path_change_are_not_ignored(self):
+        with tempfile.TemporaryDirectory() as temp:
+            facts = {'common_dir': temp}
+            xml.write_policy(facts, self.policy())
+            before = xml._identity(xml.policy_path(facts))
+            for field in (0, 1, 2, 3, 5):
+                changed = list(before)
+                changed[field] = 1 if changed[field] is None else changed[field] + 1
+                with self.subTest(field=field), mock.patch('sys.platform', 'win32'):
+                    self.assertFalse(xml._same_file(before, tuple(changed)))
+            changed = list(before); changed[4] += 1000
+            with mock.patch('sys.platform', 'win32'), mock.patch.object(xml, '_identity', side_effect=[before, tuple(changed)]):
+                with self.assertRaises(FlowError): xml.read_policy(facts)
+
     def test_unsafe_files(self):
         for kind in ('symlink', 'hardlink', 'directory', 'parent'):
             with self.subTest(kind=kind), tempfile.TemporaryDirectory() as temp:

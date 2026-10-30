@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import stat
+import sys
 import tempfile
 import xml.etree.ElementTree as ET
 from xml.parsers import expat
@@ -139,12 +140,26 @@ def policy_path(facts):
     return path
 
 
+def _signature(info):
+    return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns,
+            info.st_ctime_ns, getattr(info, 'st_birthtime_ns', None))
+
+
+def _same_file(path_signature, handle_signature):
+    # CPython 3.12 Windows lstat uses creation time for ctime, whereas
+    # fstat can expose ChangeTime. Only this cross-API comparison differs.
+    # Each API's own before/after signature remains exact, including ctime.
+    if sys.platform == 'win32':
+        return path_signature[:4] + path_signature[5:] == handle_signature[:4] + handle_signature[5:]
+    return path_signature == handle_signature
+
+
 def _identity(path):
     try: info = path.lstat()
     except FileNotFoundError: return None
     if _redirected(info) or not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_size > LIMIT:
         raise FlowError('policy_file_invalid', 'Policy must be a bounded single-link ordinary file.')
-    return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+    return _signature(info)
 
 
 def read_policy(facts):
@@ -155,11 +170,11 @@ def read_policy(facts):
         fd = os.open(path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0))
         with os.fdopen(fd, 'rb') as stream:
             info = os.fstat(stream.fileno())
-            opened = (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
-            if opened != before or _redirected(info) or not stat.S_ISREG(info.st_mode) or info.st_nlink != 1: raise _invalid()
+            opened = _signature(info)
+            if not _same_file(before, opened) or _redirected(info) or not stat.S_ISREG(info.st_mode) or info.st_nlink != 1: raise _invalid()
             raw = stream.read(LIMIT + 1)
             after = os.fstat(stream.fileno())
-            if (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns) != before: raise _invalid()
+            if _signature(after) != opened or _redirected(after) or not stat.S_ISREG(after.st_mode) or after.st_nlink != 1: raise _invalid()
         if _identity(path) != before: raise _invalid()
         _parents(path)
         return decode(raw)

@@ -70,3 +70,9 @@ No remote protection or universal local merge guarantee is claimed. Native hooks
 - Run the companion engine policy, responsibility, installation and package steps against those exact checkouts. All four steps passed locally on Linux.
 - The shared GuardEngine verifier is unchanged. The local `tests/run_installation_xml.py` preserves its ten test methods, overrides only its obsolete JSON fixture, and adds an installation responsibility test. The workflow calls this adapter.
 - Validate newly assembled platform packages from those same commits; no formal runtime/default-lock changes or release are included.
+
+## First native candidate CI and compatibility repair
+
+Candidate plugin 229f3d2 / engine 0641d67 ran remotely after explicit approval: Linux and macOS passed; Windows exposed strict-default-encoding fixture/package errors and CPython 3.12 path/descriptor ctime disagreement. These failures are retained, not reclassified as skips.
+
+The compatibility repair normalizes only Windows path-versus-descriptor comparison (device/inode/size/mtime/birthtime); full descriptor-before/after and pathname-before/after signatures retain ctime. Reparse/type/link-count/resource checks remain. Strict UTF-8 package reads and native diagnostic captures remove dependence on the Windows ANSI locale. Semantic-mismatch regression failed before the fix. Local complete regression after the fix: **242 tests, 225 passed, 17 existing Windows skips**. Independent review passed XML15 + encoding/diagnostics9 + native hooks12. Native candidate CI on the new paired commits is required; simulations are not native Windows evidence.
