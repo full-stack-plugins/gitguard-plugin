@@ -1,4 +1,4 @@
 interface:
   display_name: "gitguard-init"
-  short_description: "Git 状态发现与接入与项目 Git 规范"
-  default_prompt: "使用 $gitguard-init 按项目约定核验 Git 状态与动作；先发现和预览，授权后变更。"
+  short_description: "选择 GitGuard 工作流并初始化 XML"
+  default_prompt: "使用 $gitguard-init 预览项目工作流配置；确认后初始化 gitflow.xml，不修改 AGENTS.md。"

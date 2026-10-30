@@ -9,7 +9,7 @@ import sys
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts'))
 from gitflow.policy import validate
-from vendor_skills import files
+from vendor_skills import snapshot_errors
 
 VERSION_MANIFESTS = ('package.json', 'dsh/package.json', 'kimi.plugin.json',
                      '.claude-plugin/plugin.json', '.codex-plugin/plugin.json',
@@ -34,8 +34,7 @@ def version_errors(root, expected):
     return errors
 
 
-SKILL_NAMES = {'gitguard-' + name for name in (
-    'awesome', 'workflow', 'init', 'branch', 'audit', 'commit', 'sync', 'release', 'recovery')}
+SKILL_NAMES = {'gitguard-init'}
 
 
 def skill_name_errors(root):
@@ -43,7 +42,7 @@ def skill_name_errors(root):
     directory = root / 'skills'
     observed = {p.name for p in directory.iterdir() if p.is_dir()} if directory.is_dir() else set()
     if observed != SKILL_NAMES:
-        errors.append('Public skill directories must use the nine gitguard-* identities')
+        errors.append('Public skill directories must use the plugin-owned gitguard-init identity')
     for name in sorted(SKILL_NAMES & observed):
         try:
             text = (directory / name / 'SKILL.md').read_text(encoding='utf-8')
@@ -72,8 +71,7 @@ def validate_package():
         if set(config)-{'type','command','args','env','cwd'} or config.get('type')!='stdio' or config.get('command')!='python3':errors.append('MCP 服务')
         if config.get('cwd')!='./' or config.get('args')!=['${PLUGIN_ROOT}/scripts/gitflow.py','mcp']:errors.append('MCP 启动路径')
         if set(config.get('env',{})) & {'PLUGIN_ROOT','PLUGIN_DATA'}:errors.append('MCP 保留变量')
-    lock=json.loads((ROOT/'skills.lock.json').read_text(encoding='utf-8'))
-    if files(ROOT)!=lock['files']:errors.append('技能/模板快照摘要不一致')
+    errors.extend(snapshot_errors(ROOT))
     for file in (ROOT/'profiles').glob('*.json'):validate(json.loads(file.read_text(encoding='utf-8')))
     for file in (ROOT/'scripts').rglob('*.py'):ast.parse(file.read_text(encoding='utf-8'))
     return errors

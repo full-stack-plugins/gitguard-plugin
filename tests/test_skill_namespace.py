@@ -9,8 +9,7 @@ import unittest
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-SUFFIXES = ('awesome', 'workflow', 'init', 'branch', 'audit', 'commit', 'sync', 'release', 'recovery')
-EXPECTED = {'gitguard-' + suffix for suffix in SUFFIXES}
+EXPECTED = {'gitguard-init'}
 
 class SkillNamespaceTests(unittest.TestCase):
     def test_public_directories_frontmatter_and_host_prompts_match(self):
@@ -22,6 +21,11 @@ class SkillNamespaceTests(unittest.TestCase):
                 prompt = (ROOT/'skills'/name/'agents/openai.yaml').read_text(encoding='utf-8')
                 self.assertIn('display_name: "'+name+'"', prompt)
                 self.assertIn('$'+name, prompt)
+
+    def test_generic_snapshot_is_separate_from_registered_skills(self):
+        generic=ROOT/'vendor/git-skills/skills'
+        self.assertTrue((generic/'git-init/SKILL.md').is_file())
+        self.assertFalse((ROOT/'skills/git-init').exists())
 
     def test_package_validation_rejects_wrong_skill_identity(self):
         sys.path.insert(0, str(ROOT/'scripts'))

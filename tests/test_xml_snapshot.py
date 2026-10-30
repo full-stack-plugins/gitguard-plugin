@@ -34,7 +34,7 @@ class SnapshotPortabilityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix='snapshot-checkout-') as temp:
             source = Path(temp) / 'source';source.mkdir()
             checkout = Path(temp) / 'checkout'
-            for directory in ('skills', 'profiles'):
+            for directory in ('skills', 'profiles', 'vendor'):
                 shutil.copytree(ROOT / directory, source / directory, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
             for name in ('sources.json', 'skills.lock.json'):
                 shutil.copyfile(ROOT / name, source / name)

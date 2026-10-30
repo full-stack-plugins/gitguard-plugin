@@ -27,8 +27,7 @@
         "displayName": "GitGuard（分支规范防护）",
         "shortDescription": "分支命名、创建、提交、同步与发布回灌",
         "defaultPrompt": [
-          "使用 $gitguard-workflow 识别本项目工作流；规则以 gitflow.xml 为准",
-          "使用 $gitguard-audit 对当前项目进行只读规范审计"
+          "使用 $gitguard-init 选择工作流并预览 gitflow.xml 初始化；不修改 AGENTS.md"
         ],
         "brandColor": "#F05032",
         "logo": "./assets/logo.png",

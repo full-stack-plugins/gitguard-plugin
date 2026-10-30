@@ -94,7 +94,7 @@ Native commit checks inspect real pending commit messages and provable merge sta
 
 Public `check` raises `ci_policy_unconfigured` until separately trusted XML provisioning exists. It cannot approve using PR-controlled XML or JSON, regardless of a passing local gate. [`ci.evaluate_range`](../scripts/gitflow/ci.py) retains a pure policy-argument range evaluator for bounded local/native use and tests; its existence does not configure remote CI or required checks.
 
-Compatibility `branch`, `sync`, `release`, `recovery`, and `policy --operation activate` remain; activation validates current XML and does not import JSON. They are outside the primary normal-Git onboarding path. The Rust adapter continues delegating to the same policy loader; its context returns metadata references while explicit policy checks consume full XML rules. Packaged skill snapshots remain frozen compatibility guidance, subject to this current runtime contract.
+Compatibility `branch`, `sync`, `release`, `recovery`, and `policy --operation activate` remain; activation validates current XML and does not import JSON. They are outside the primary normal-Git onboarding path. The Rust adapter continues delegating to the same policy loader; its context returns metadata references while explicit policy checks consume full XML rules. Generic source snapshots remain under unregistered `vendor/git-skills/`; the registered `skills/` contains only the plugin-owned gitguard-init with this current runtime contract.
 
 ## Verification and remaining acceptance
 

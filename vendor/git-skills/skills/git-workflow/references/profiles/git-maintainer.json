@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0.0",
+  "profile": "git-maintainer",
+  "revision": 1,
+  "roles": {
+    "maint": {
+      "name": "maint",
+      "pattern": null,
+      "required": true,
+      "allow_commit": false,
+      "create_from": [],
+      "merge_into": [
+        "main"
+      ]
+    },
+    "main": {
+      "name": "main",
+      "pattern": null,
+      "required": true,
+      "allow_commit": false,
+      "create_from": [],
+      "merge_into": [
+        "next"
+      ]
+    },
+    "next": {
+      "name": "next",
+      "pattern": null,
+      "required": true,
+      "allow_commit": false,
+      "create_from": [],
+      "merge_into": [
+        "seen"
+      ]
+    },
+    "seen": {
+      "name": "seen",
+      "pattern": null,
+      "required": true,
+      "allow_commit": false,
+      "create_from": [],
+      "merge_into": []
+    },
+    "feature": {
+      "name": null,
+      "pattern": "feature/[a-z0-9][a-z0-9-]*",
+      "required": false,
+      "allow_commit": true,
+      "create_from": [
+        "main"
+      ],
+      "merge_into": [
+        "next"
+      ]
+    },
+    "hotfix": {
+      "name": null,
+      "pattern": "hotfix/[a-z0-9][a-z0-9.-]*",
+      "required": false,
+      "allow_commit": true,
+      "create_from": [
+        "maint"
+      ],
+      "merge_into": [
+        "maint"
+      ]
+    }
+  },
+  "primary_remote": "origin",
+  "merge_method": "no-ff",
+  "commit_message_pattern": null,
+  "collaboration": "shared"
+}

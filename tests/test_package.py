@@ -44,14 +44,14 @@ class PackageTests(unittest.TestCase):
     def test_snapshot_tamper_is_detected(self):
         with tempfile.TemporaryDirectory() as folder:
             copy=Path(folder)/'plugin';shutil.copytree(ROOT,copy,ignore=shutil.ignore_patterns('__pycache__','.superpowers'))
-            file=copy/'skills/gitguard-commit/SKILL.md';file.write_text(file.read_text()+'\n被修改\n')
+            file=copy/'vendor/git-skills/skills/git-commit/SKILL.md';file.write_text(file.read_text()+'\n被修改\n')
             p=subprocess.run([sys.executable,str(copy/'scripts/vendor_skills.py'),'--check'],text=True,capture_output=True)
             self.assertNotEqual(p.returncode,0)
 
     def test_each_skill_can_run_in_isolation(self):
         with tempfile.TemporaryDirectory() as folder:
             temp=Path(folder)
-            for source in (ROOT/'skills').iterdir():
+            for source in (ROOT/'vendor/git-skills/skills').iterdir():
                 isolated=temp/source.name;shutil.copytree(source,isolated)
                 p=subprocess.run([sys.executable,str(isolated/'scripts/inspect_repository.py'),str(temp)],cwd=temp,text=True,capture_output=True)
                 self.assertEqual(p.returncode,0,p.stderr)

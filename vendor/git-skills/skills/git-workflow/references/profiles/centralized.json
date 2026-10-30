@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0.0",
+  "profile": "centralized",
+  "revision": 1,
+  "roles": {
+    "main": {
+      "name": "main",
+      "pattern": null,
+      "required": true,
+      "allow_commit": true,
+      "create_from": [],
+      "merge_into": []
+    }
+  },
+  "primary_remote": "origin",
+  "merge_method": "ff-only",
+  "commit_message_pattern": null,
+  "collaboration": "shared"
+}

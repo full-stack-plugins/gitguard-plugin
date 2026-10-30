@@ -1,27 +1,34 @@
-# GitGuard 技能名称迁移
+# 技能源与 GitGuard 插件职责
 
-用户可见入口统一为 gitguard-*，不改原生 git 命令、仓库名 git-skills、内部 gitflow 模块、XML文件名或CLI子命令。没有提供旧别名，以免宿主继续显示错误命名；旧提示词和会话需切换到新名称并重新加载本地候选包。
+本轮候选纠正此前将通用九技能机械改为 gitguard-* 的范围错误。
 
-| 旧名称 | 当前候选名称 |
-|---|---|
-| git-awesome | gitguard-awesome |
-| git-workflow | gitguard-workflow |
-| git-init | gitguard-init |
-| git-branch | gitguard-branch |
-| git-audit | gitguard-audit |
-| git-commit | gitguard-commit |
-| git-sync | gitguard-sync |
-| git-release | gitguard-release |
-| git-recovery | gitguard-recovery |
+- git-skills 恢复 git-awesome、git-workflow、git-init、git-branch、git-audit、git-commit、git-sync、git-release、git-recovery，保持独立通用技能。
+- GitGuard 仅注册插件专属 gitguard-init；先前九个 gitguard-* 注册入口不作为本轮产品合同保留。已有 CLI 能力未删除。
+- skills/gitguard-init 由插件维护，调用实际插件启动器的 init。通用源在 vendor/git-skills/ 保留原始字节，非宿主注册目录；不对通用源做名称映射或注入插件规则。
+- skills.lock.json v2 分别记录 source_commit、90个原始 source_files 与101个包内 files。后者包括专属技能、原始快照及运行时模板。vendor --check 校验包内摘要、原始快照和运行时模板一致性；带 --source 还校验上游内容。生成器不覆盖插件专属技能。
+- profiles/ 和 sources.json 保持原始源字节。原生 Git 命令、内部 gitflow/XML、兼容 CLI 不改名。
 
-技能事实源仍为 full-stack-skills/git-skills；先修改源包，再通过 scripts/vendor_skills.py 同步并重锁90个文件。SKILL frontmatter、目录、agents/openai.yaml显示名/默认提示、独立挂载路径、技能交接和插件入口提示同步。历史证据及归档规格不重写。
+## 使用
 
-当前技能提示明确XML唯一权威、install拥有AGENTS、init仅选择GitFlow/初始化XML；兼容旧JSON资料不是当前授权或规则来源。原生Git操作及Hook覆盖边界不变。现有Rust安装引导未使用旧九技能名称，原本的gitguard-policy-check入口已符合前缀，不为改名修改引擎或共享GuardEngine。
+先核对 gitguard 来自本插件的 CLI 启动器，而非同名 Rust 项目安装器：
 
-候选仅本地验证，未推送、合main或发版。后续先发布/推送审阅技能源包，再发布包含该锁定快照的gitguard-plugin；使用者重新加载/安装插件，避免宿主缓存旧目录。不能声称旧远端tag已含新入口。
+```bash
+gitguard init PROJECT --profile github-flow --json
+gitguard init PROJECT --profile github-flow --apply --json
+```
 
-## 本地验收
+交互终端可用 gitguard init PROJECT 选择八预设；Agent 非交互调用必须明确 profile。普通仓库写 .git/gitflow.xml，linked worktree 使用 common-dir；init 不读改 AGENTS.md。Rust项目 install 管理 AGENTS 引导，插件启动器 install --bin-dir 只安装命令。均不代表自动守护已启用。
 
-2026-10-30 Linux：完整 unittest 249 项（232 通过，17 项需要真实 Windows cmd/Job Objects/junction/rename sharing）；名称专项3项通过；源技能验证9项无错误；源包与插件快照90文件一致。真实Rust安装/init顺序8项通过，配套安装11项中10通过，1项因需要全部六守卫工具跳过。离线ZIP解包后包校验通过。独立审查发现的旧JSON当前流程冲突已修正并复核。
+## 复用与待定范围
 
-源技能提交 `6e3b61b9fd25878b4dd62bc16f1c23aaeb04904b`。当前环境无 openspec、quick_validate、TRACE 命令，因此没有声称这些检查通过。Windows/macOS及真实Agent加载未在本轮运行；不代表生产就绪。
+现有 audit、status、doctor 可做只读检查和接线诊断，gate 可供已有提交/推送检查链复用。它们继续是 CLI，尚未新建专属技能。是否新增 gitguard-check 或 gitguard-doctor 等入口及交互范围需用户确定，不把兼容 branch/sync/release 包装当主流程。
+
+## 发布边界
+
+本轮仅本地修正，涉及 git-skills 和 gitguard-plugin；未推送、合main或发布。旧远端仍有九技能改名，不能将本地候选说成已发布。真实 Agent 宿主自动发现/触发尚未验收。
+
+## 本地验证记录（2026-10-30）
+
+源仓恢复提交：fdda88a8f1fd800cf371e02996a4aed752a7732f；内容与恢复前原通用基线 f3ef639 完全一致，9技能校验通过。插件完整 unittest 254 项：237通过，17真实Windows依赖项跳过，无失败。实际安装后的CLI init预览/应用/重复与AGENTS不变回归通过；Rust安装/init顺序8项通过。ZIP解包后仅注册gitguard-init，9通用技能在vendor目录；包校验和101文件锁校验通过。来源commit内容、篡改、符号链接输出拒绝、重复生成都有回归；独立审查通过。
+
+未安装或运行缺失的 openspec/quick_validate/TRACE；本轮未运行远端CI、Windows/macOS或真实Agent宿主，不将历史CI结果当作当前候选验收。

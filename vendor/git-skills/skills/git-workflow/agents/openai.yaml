@@ -1,0 +1,4 @@
+interface:
+  display_name: "git-workflow"
+  short_description: "工作流识别、选择与定义与项目 Git 规范"
+  default_prompt: "使用 $git-workflow 按项目约定核验 Git 状态与动作；先发现和预览，授权后变更。"

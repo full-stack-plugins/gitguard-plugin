@@ -1,0 +1,4 @@
+interface:
+  display_name: "git-init"
+  short_description: "Git 状态发现与接入与项目 Git 规范"
+  default_prompt: "使用 $git-init 按项目约定核验 Git 状态与动作；先发现和预览，授权后变更。"

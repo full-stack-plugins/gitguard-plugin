@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0.0",
+  "profile": "github-flow",
+  "revision": 1,
+  "roles": {
+    "main": {
+      "name": "main",
+      "pattern": null,
+      "required": true,
+      "allow_commit": false,
+      "create_from": [],
+      "merge_into": []
+    },
+    "feature": {
+      "name": null,
+      "pattern": "feature/[a-z0-9][a-z0-9-]*",
+      "required": false,
+      "allow_commit": true,
+      "create_from": [
+        "main"
+      ],
+      "merge_into": [
+        "main"
+      ]
+    }
+  },
+  "primary_remote": "origin",
+  "merge_method": "no-ff",
+  "commit_message_pattern": null,
+  "collaboration": "shared"
+}

@@ -4,11 +4,9 @@ GitGuard checks branch names, commit permissions, merge direction and configured
 
 [简体中文](README.zh-CN.md) · [Usage and safety](docs/xml-native-guard.md) · [XML contract](openspec/changes/xml-native-guard/specs/xml-native-guard/spec.md)
 
-## Skill entrypoints
+## Skill entrypoint
 
-`gitguard-awesome`、`gitguard-workflow`、`gitguard-init`、`gitguard-branch`、`gitguard-audit`、`gitguard-commit`、`gitguard-sync`、`gitguard-release`、`gitguard-recovery`
-
-These are Agent skill names, not new Git subcommands. Legacy `git-*` skill aliases are no longer registered; refresh/reload the candidate plugin in existing sessions. Continue using ordinary `git commit`, `git push`, etc. CLI capabilities are unchanged. See [the migration map](docs/skill-namespace.md).
+`gitguard-init` is the plugin-owned initialization skill. It uses the existing `gitguard init PROJECT --profile PROFILE [--apply]` CLI; init does not modify AGENTS.md. Generic `git-*` skills stay independently available from git-skills. Their frozen source is retained under `vendor/git-skills/`, outside the registered `skills/` directory. No nine-skill prefix mapping is used. See [scope and migration](docs/skill-namespace.md).
 
 
 ## Start in an existing repository
@@ -61,7 +59,7 @@ python3 /absolute/gitguard-plugin/scripts/gitflow.py policy . --operation migrat
 python3 /absolute/gitguard-plugin/scripts/gitflow.py policy . --operation migrate --apply
 ```
 
-Migration preserves legacy files, validates organization references and locked rules, and flattens resolved rules into XML. Existing XML prevents migration from replacing it. `branch`, `sync`, `release`, `recovery` and older activation entrypoints remain compatibility interfaces; new onboarding uses normal Git. The Rust adapter delegates policy loading to the same Python implementation; runtime context exposes metadata references while policy checks consume the complete policy. Packaged `skills/` remain frozen compatibility guidance.
+Migration preserves legacy files, validates organization references and locked rules, and flattens resolved rules into XML. Existing XML prevents migration from replacing it. `branch`, `sync`, `release`, `recovery` and older activation entrypoints remain compatibility interfaces; new onboarding uses normal Git. The Rust adapter delegates policy loading to the same Python implementation; runtime context exposes metadata references while policy checks consume the complete policy. The registered `skills/` contains the plugin-owned gitguard-init; generic upstream snapshots are retained under unregistered `vendor/git-skills/`.
 
 ## Development verification
 

@@ -1,0 +1,88 @@
+{
+  "schema_version": "1.0.0",
+  "checked_at": "2026-10-07",
+  "policy": "只保存链接与中文改写；不分发第三方完整教程。来源各自版权，不统一再许可。",
+  "sources": [
+    {
+      "id": "classic-gitflow",
+      "publisher": "Vincent Driessen",
+      "url": "https://nvie.com/posts/a-successful-git-branching-model/",
+      "checked_at": "2026-10-07",
+      "applies_to": "分期发布与多版本软件；main/develop 长期存在，任务、发布、修复分支按需创建。",
+      "caution": "持续交付团队先比较简化模型；原作者 2020 反思不主张所有产品采用。",
+      "derivation": "中文摘要；命名/保护模板含本项目选择，非官方强制规范。"
+    },
+    {
+      "id": "github-flow",
+      "publisher": "GitHub Docs",
+      "url": "https://docs.github.com/en/get-started/using-github/github-flow",
+      "checked_at": "2026-10-07",
+      "applies_to": "main 与短期任务分支，审查后集成；无需 develop。",
+      "caution": "本文模板采用 feature/ 前缀是项目约定，官方没有强制该前缀。",
+      "derivation": "中文摘要；命名/保护模板含本项目选择，非官方强制规范。"
+    },
+    {
+      "id": "gitlab-environment",
+      "publisher": "GitLab",
+      "url": "https://about.gitlab.com/topics/version-control/what-is-gitlab-flow/",
+      "checked_at": "2026-10-07",
+      "applies_to": "main 后向 staging/production 推进的环境变体。",
+      "caution": "环境分支不是所有 GitLab 项目的必需项；上线时仍需单独部署验证。",
+      "derivation": "中文摘要；命名/保护模板含本项目选择，非官方强制规范。"
+    },
+    {
+      "id": "gitlab-release",
+      "publisher": "GitLab Docs",
+      "url": "https://docs.gitlab.com/user/project/repository/branches/strategies/",
+      "checked_at": "2026-10-07",
+      "applies_to": "主线加版本稳定分支；选择性修复传播。",
+      "caution": "stable/ 命名与禁止直接提交为模板扩展，团队应确认。",
+      "derivation": "中文摘要；命名/保护模板含本项目选择，非官方强制规范。"
+    },
+    {
+      "id": "trunk-based",
+      "publisher": "DORA",
+      "url": "https://dora.dev/capabilities/trunk-based-development/",
+      "checked_at": "2026-10-07",
+      "applies_to": "小批变更、高频主干集成，短期分支寿命通常小于一天。",
+      "caution": "模板是受审查短分支变体；分支数与寿命目标不是已实现的自动度量。",
+      "derivation": "中文摘要；命名/保护模板含本项目选择，非官方强制规范。"
+    },
+    {
+      "id": "microsoft-release",
+      "publisher": "Microsoft Azure DevOps",
+      "url": "https://devblogs.microsoft.com/devops/release-flow-how-we-do-branching-on-the-vsts-team/",
+      "checked_at": "2026-10-07",
+      "applies_to": "在主线修复，再选择性 cherry-pick 到版本发布分支。",
+      "caution": "不要与 Git 维护者 oldest-first 合并方向混用。",
+      "derivation": "中文摘要；命名/保护模板含本项目选择，非官方强制规范。"
+    },
+    {
+      "id": "git-maintainer",
+      "publisher": "Git Project",
+      "url": "https://git-scm.com/docs/gitworkflows",
+      "checked_at": "2026-10-07",
+      "applies_to": "maint/main/next/seen 的稳定层级；修复先在最老适用维护线，向上 merge。",
+      "caution": "模板把上游 master 映射 main；集成分支不能自动当发布线。",
+      "derivation": "中文摘要；命名/保护模板含本项目选择，非官方强制规范。"
+    },
+    {
+      "id": "centralized",
+      "publisher": "Pro Git",
+      "url": "https://git-scm.com/book/en/v2/Distributed-Git-Distributed-Workflows",
+      "checked_at": "2026-10-07",
+      "applies_to": "共享主线、集中协作；可直接在项目指定主线提交。",
+      "caution": "直接提交是明确选型，不是其他模型的隐含例外。",
+      "derivation": "中文摘要；命名/保护模板含本项目选择，非官方强制规范。"
+    },
+    {
+      "id": "fork",
+      "publisher": "Atlassian Git Tutorials",
+      "url": "https://www.atlassian.com/git/tutorials/comparing-workflows/forking-workflow",
+      "checked_at": "2026-10-07",
+      "applies_to": "贡献者写自己的远端，维护者负责上游集成。",
+      "caution": "Fork 是协作/远端模式，可与不同分支模型组合，不能代替合入方向。",
+      "derivation": "中文摘要；命名/保护模板含本项目选择，非官方强制规范。"
+    }
+  ]
+}

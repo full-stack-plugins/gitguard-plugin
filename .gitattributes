@@ -2,3 +2,4 @@
 skills/** -text
 profiles/** -text
 sources.json -text
+vendor/git-skills/** -text

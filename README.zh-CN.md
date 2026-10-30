@@ -6,9 +6,7 @@ GitGuard 依据一份本地 XML 规则，检查分支名称、提交权限、合
 
 ## 技能入口
 
-`gitguard-awesome`、`gitguard-workflow`、`gitguard-init`、`gitguard-branch`、`gitguard-audit`、`gitguard-commit`、`gitguard-sync`、`gitguard-release`、`gitguard-recovery`
-
-这些是 Agent 技能名称，不是新的原生 Git 子命令。旧 `git-*` 技能不再注册；现有会话需刷新或重新加载候选插件。使用普通 `git commit`、`git push` 等命令；本次没有改变 CLI 能力。参见[改名映射与候选验证](docs/skill-namespace.md)。
+插件专属入口为 `gitguard-init`，调用既有 `gitguard init PROJECT --profile PROFILE [--apply]`。init 不修改 AGENTS.md；项目 install 才管理引导。通用 `git-*` 由 git-skills 独立提供；其来源快照保留在非注册目录 `vendor/git-skills/`，不再机械映射九个前缀。见[职责与迁移](docs/skill-namespace.md)。
 
 
 ## 在已有仓库中开始
@@ -61,7 +59,7 @@ python3 /absolute/gitguard-plugin/scripts/gitflow.py policy . --operation migrat
 python3 /absolute/gitguard-plugin/scripts/gitflow.py policy . --operation migrate --apply
 ```
 
-迁移保留旧文件，校验组织引用、摘要与锁定规则，并将解析后的规则展开到 XML。已有 XML 时拒绝迁移覆盖。旧 `branch`、`sync`、`release`、`recovery` 和 activation 入口保留为兼容接口，新用户主路径使用普通 Git。Rust 适配器继续调用相同的 Python 规则加载实现；本轮已本地重建未改动的 Rust 源码，并验证 XML CLI/MCP 配套。打包 `skills/` 保留冻结的兼容引导。
+迁移保留旧文件，校验组织引用、摘要与锁定规则，并将解析后的规则展开到 XML。已有 XML 时拒绝迁移覆盖。旧 `branch`、`sync`、`release`、`recovery` 和 activation 入口保留为兼容接口，新用户主路径使用普通 Git。Rust 适配器继续调用相同的 Python 规则加载实现；本轮已本地重建未改动的 Rust 源码，并验证 XML CLI/MCP 配套。注册目录 `skills/` 仅包含专属 gitguard-init；通用源快照保留在非注册目录 `vendor/git-skills/`。
 
 ## 本地验证
 
