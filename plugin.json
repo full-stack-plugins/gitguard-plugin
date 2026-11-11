@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "gitguard",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Git 分支、变更范围、同步、发布回灌、恢复与合并候选防护；保留真实 Git 事实与回退路径。",
   "author": {
     "name": "Full Stack Skills"

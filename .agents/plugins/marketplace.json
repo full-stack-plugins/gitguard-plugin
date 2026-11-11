@@ -9,20 +9,20 @@
       "source": {
         "source": "url",
         "url": "https://github.com/full-stack-plugins/gitguard-plugin.git",
-        "ref": "v0.4.0"
+        "ref": "v0.4.1"
       },
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_USE"
       },
       "category": "Developer Tools",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "description": "Git 分支、变更范围、同步、发布回灌、恢复与合并候选防护；保留真实 Git 事实与回退路径。",
-      "icon": "https://cdn.jsdelivr.net/gh/full-stack-plugins/gitguard-plugin@v0.4.0/assets/logo.png",
+      "icon": "https://cdn.jsdelivr.net/gh/full-stack-plugins/gitguard-plugin@v0.4.1/assets/logo.png",
       "interface": {
         "displayName": "GitGuard（分支规范防护）",
         "shortDescription": "分支命名、创建、提交、同步与发布回灌",
-        "logo": "https://cdn.jsdelivr.net/gh/full-stack-plugins/gitguard-plugin@v0.4.0/assets/logo.png"
+        "logo": "https://cdn.jsdelivr.net/gh/full-stack-plugins/gitguard-plugin@v0.4.1/assets/logo.png"
       },
       "line": "full-stack",
       "componentTypes": [

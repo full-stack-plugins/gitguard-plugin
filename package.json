@@ -1,13 +1,14 @@
 {
-  "name": "gitflow-plugin",
-  "version": "0.4.0",
+  "name": "gitflow",
+  "version": "0.4.1",
   "private": true,
   "type": "module",
   "main": "./dsh/lib/index.js",
   "dsh": {
     "bundle": {
-      "patch": "./cordis.patch.yml"
+      "patch": "./dsh/cordis.patch.yml"
     }
   },
-  "icon": "./dsh/icon.png"
+  "icon": "./dsh/icon.png",
+  "description": "按项目约定治理 Git 分支、提交与流转，九技能加确定性门禁"
 }
